@@ -1,7 +1,7 @@
+import type {Database} from '@vidflow/db';
 import {Hono} from 'hono';
 import {cors} from 'hono/cors';
 import {logger} from 'hono/logger';
-import type pg from 'pg';
 
 import type {AppEnv} from './app-env';
 import type {Auth} from './auth';
@@ -13,12 +13,12 @@ import {meRoutes} from './routes/me';
 
 export interface AppDeps {
   env: Env;
-  pool: pg.Pool;
+  db: Database;
   auth: Auth;
 }
 
 /** Builds the HTTP app. Kept free of `listen()` so tests can call it directly. */
-export function createApp({env, pool, auth}: AppDeps) {
+export function createApp({env, db, auth}: AppDeps) {
   const app = new Hono<AppEnv>();
 
   if (env.NODE_ENV !== 'test') app.use(logger());
@@ -35,7 +35,7 @@ export function createApp({env, pool, auth}: AppDeps) {
 
   app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
-  app.route('/health', healthRoutes(pool));
+  app.route('/health', healthRoutes(db));
 
   app.use('/v1/*', loadSession(auth));
   app.route('/v1/me', meRoutes());

@@ -1,14 +1,14 @@
+import {createDb} from '@vidflow/db';
 import {serve} from '@hono/node-server';
 
 import {createApp} from './app';
 import {createAuth} from './auth';
 import {loadEnv} from './env';
-import {createPool} from './lib/db';
 
 const env = loadEnv();
-const pool = createPool(env.DATABASE_URL);
-const auth = createAuth(env, pool);
-const app = createApp({env, pool, auth});
+const {db, pool} = createDb(env.DATABASE_URL);
+const auth = createAuth(env, db);
+const app = createApp({env, db, auth});
 
 const server = serve({fetch: app.fetch, port: env.API_PORT}, (info) => {
   console.log(`Vidflow API listening on http://localhost:${info.port}`);

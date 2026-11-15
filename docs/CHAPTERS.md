@@ -31,8 +31,8 @@ playback, Prometheus + Grafana for metrics, Caddy for HTTPS.
 | #   | Chapter                                     | What it adds                                                                                                                        | Status   |
 | --- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | 1   | Project init and authentication setup       | Turborepo + pnpm monorepo, Hono API, Better Auth, Next.js web with sign-up/sign-in, design system, CI                               | ✅ Done  |
-| 2   | Database and ORM layer setup                | Drizzle schema (videos, sources, renditions, assets, jobs, webhooks, api_keys), video state machine, migrations, Repository pattern | ⏸ Next   |
-| 3   | Object storage layer                        | `StorageProvider` interface (Strategy): MinIO locally, S3 / R2 in production; presigned URLs; bucket layout and lifecycle rules     | Planned  |
+| 2   | Database and ORM layer setup                | Drizzle schema (videos, sources, renditions, assets, jobs, webhooks, api_keys), video state machine, migrations, Repository pattern | ✅ Done  |
+| 3   | Object storage layer                        | `StorageProvider` interface (Strategy): MinIO locally, S3 / R2 in production; presigned URLs; bucket layout and lifecycle rules     | ⏸ Next   |
 | 4   | Resumable direct uploads                    | S3 multipart uploads straight from the browser (presigned parts), resume after refresh, size and type checks, upload UI             | Planned  |
 | 5   | Queue architecture and BullMQ Flows         | One queue per stage, typed job contracts, a Flow (DAG) per video, idempotent job IDs, priorities, shared `packages/queues`          | Planned  |
 | 6   | Probe service                               | `probe-worker`: ffprobe metadata, rejects bad files, picks the rendition ladder (never upscales), starts the transcode flow         | Planned  |
