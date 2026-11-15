@@ -69,11 +69,22 @@ export function onFinalFailure<D, R>(
   worker: Worker<D, R>,
   handler: (job: Job<D, R>, err: Error) => Promise<void>,
   log: Log = consoleLog,
+  /** Also copy the job to the dead-letter queue. */
+  pipeline?: {
+    deadLetter(
+      queue: QueueName,
+      job: {id?: string; name: string; data: unknown; attemptsMade: number},
+      err: Error,
+    ): Promise<void>;
+  },
 ): void {
   worker.on('failed', (job, err) => {
     if (!job) return;
     const final = err.name === 'UnrecoverableError' || job.attemptsMade >= (job.opts.attempts ?? 1);
     if (!final) return;
+    pipeline
+      ?.deadLetter(worker.name as QueueName, job, err)
+      .catch((e: Error) => log.error({jobId: job.id, err: e.message}, 'dead-letter failed'));
     handler(job, err).catch((e: Error) =>
       log.error({jobId: job.id, err: e.message}, 'final-failure handler failed'),
     );

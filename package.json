@@ -19,7 +19,9 @@
     "storage:setup": "pnpm --filter @vidflow/storage storage:setup",
     "smoke": "./scripts/smoke-api.sh",
     "db:generate": "pnpm --filter @vidflow/db db:generate",
-    "queues:stats": "pnpm --filter @vidflow/queues queues:stats"
+    "queues:stats": "pnpm --filter @vidflow/queues queues:stats",
+    "queues:replay": "pnpm --filter @vidflow/queues queues:replay",
+    "test:chaos": "pnpm --filter @vidflow/chaos-tests test:chaos"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

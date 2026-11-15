@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 
 import {createDb} from '@vidflow/db';
-import {LiveHub, Pipeline, QUEUE_NAMES} from '@vidflow/queues';
+import {LiveHub, Pipeline, QUEUE_NAMES, RateLimiter} from '@vidflow/queues';
 import {S3StorageProvider} from '@vidflow/storage';
 
 import {createApp, type AppDeps} from '../src/app';
@@ -53,14 +53,16 @@ export function makeTestApp(overrides: Partial<AppDeps> = {}) {
   const storage = new S3StorageProvider(storageConfig);
   const pipeline = testPipeline();
   const liveHub = testLiveHub();
-  const app = createApp({env, db, auth, storage, pipeline, liveHub, ...overrides});
+  const limiter = new RateLimiter(env.REDIS_URL, `vidflow-test-api-${process.pid}-${randomUUID()}`);
+  const app = createApp({env, db, auth, storage, pipeline, liveHub, limiter, ...overrides});
   const close = async () => {
     for (const name of QUEUE_NAMES) await pipeline.queue(name).obliterate({force: true});
     await pipeline.close();
     await liveHub.close();
+    await limiter.close();
     await pool.end();
   };
-  return {app, db, storage, pipeline, liveHub, close};
+  return {app, db, storage, pipeline, liveHub, limiter, close};
 }
 
 /** Signs up a fresh user and returns headers that carry their session. */

@@ -22,6 +22,12 @@ const schema = z.object({
     .int()
     .positive()
     .default(2 * 3600_000),
+  /**
+   * How long a job's lock lasts before it must be renewed, and how often BullMQ
+   * looks for stalled jobs (a worker that died mid-encode). Lower means faster
+   * recovery after a crash; too low and a busy worker looks dead.
+   */
+  TRANSCODE_LOCK_MS: z.coerce.number().int().min(1000).default(60_000),
   /** Scratch space for encoded files before upload. */
   TRANSCODE_TMP_DIR: z.string().default(tmpdir()),
 });

@@ -5,7 +5,7 @@ import {
   type Database,
   type VideoRepositoryOptions,
 } from '@vidflow/db';
-import type {LiveHub, Pipeline} from '@vidflow/queues';
+import type {LiveHub, Pipeline, RateLimiter} from '@vidflow/queues';
 import type {StorageProvider} from '@vidflow/storage';
 import {Hono} from 'hono';
 import {cors} from 'hono/cors';
@@ -14,7 +14,7 @@ import {logger} from 'hono/logger';
 import type {AppEnv} from './app-env';
 import type {Auth} from './auth';
 import type {Env} from './env';
-import {AppError, type ErrorBody} from './lib/errors';
+import {AppError, TooManyRequestsError, type ErrorBody} from './lib/errors';
 import {loadSession} from './middleware/session';
 import {ADMIN_BASE_PATH, adminRoutes} from './routes/admin';
 import {apiKeyRoutes} from './routes/api-keys';
@@ -33,16 +33,42 @@ export interface AppDeps {
   pipeline: Pipeline;
   /** Fans live updates out to SSE connections. */
   liveHub: LiveHub;
+  limiter: RateLimiter;
   /** Publishes the API's own video changes (uploads) live. */
   videoOptions?: VideoRepositoryOptions;
 }
 
 /** Builds the HTTP app. Kept free of `listen()` so tests can call it directly. */
-export function createApp({env, db, auth, storage, pipeline, liveHub, videoOptions}: AppDeps) {
+export function createApp({
+  env,
+  db,
+  auth,
+  storage,
+  pipeline,
+  liveHub,
+  limiter,
+  videoOptions,
+}: AppDeps) {
   const app = new Hono<AppEnv>();
   const videos = new VideoRepository(db, videoOptions);
   const uploads = new UploadService(videos, storage, {
     maxUploadBytes: env.MAX_UPLOAD_BYTES,
+    // Abuse limits: uploads per hour, and videos in the pipeline at once.
+    beforeCreate: async (userId) => {
+      const hourly = await limiter.hit(`uploads:${userId}`, env.UPLOADS_PER_HOUR, 3600);
+      if (!hourly.allowed) {
+        throw new TooManyRequestsError(
+          `Upload limit reached (${env.UPLOADS_PER_HOUR} per hour)`,
+          hourly.retryAfterSec,
+        );
+      }
+      if ((await videos.countActive(userId)) >= env.MAX_ACTIVE_VIDEOS) {
+        throw new TooManyRequestsError(
+          `${env.MAX_ACTIVE_VIDEOS} videos are already processing; try again when one finishes`,
+          60,
+        );
+      }
+    },
     // The upload is done: hand the video to the pipeline.
     onUploaded: async (video) => {
       await pipeline.enqueueProbe(video.id);
@@ -69,7 +95,7 @@ export function createApp({env, db, auth, storage, pipeline, liveHub, videoOptio
 
   app.use('/v1/*', loadSession(auth, db));
   app.route('/v1/me', meRoutes());
-  app.route('/v1/videos', videoRoutes(videos, uploads, storage));
+  app.route('/v1/videos', videoRoutes(videos, uploads, storage, pipeline));
   app.route('/v1/live', liveRoutes(liveHub));
   app.route('/v1/api-keys', apiKeyRoutes(new ApiKeyRepository(db)));
   app.use(`${ADMIN_BASE_PATH}/*`, loadSession(auth, db));
@@ -88,6 +114,9 @@ export function createApp({env, db, auth, storage, pipeline, liveHub, videoOptio
   });
 
   app.onError((err, c) => {
+    if (err instanceof TooManyRequestsError && err.retryAfterSec) {
+      c.header('Retry-After', String(err.retryAfterSec));
+    }
     if (err instanceof AppError) {
       const body: ErrorBody = {error: {code: err.code, message: err.message}};
       return c.json(body, err.status);

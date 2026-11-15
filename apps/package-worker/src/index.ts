@@ -30,8 +30,11 @@ const worker = createWorker(
 // Also fires when a transcode child failed for good: BullMQ fails this parent
 // as soon as it is picked up. The transcode worker has usually failed the
 // video already, and then this is a no-op.
-onFinalFailure(worker, (job, err) =>
-  rt.failVideo(job.data.videoId, `Packaging failed: ${err.message}`),
+onFinalFailure(
+  worker,
+  (job, err) => rt.failVideo(job.data.videoId, `Packaging failed: ${err.message}`),
+  undefined,
+  rt.pipeline,
 );
 
 console.log(`package-worker started (concurrency ${env.PACKAGE_CONCURRENCY})`);

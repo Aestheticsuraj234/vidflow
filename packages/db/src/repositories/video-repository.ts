@@ -1,4 +1,4 @@
-import {and, desc, eq, inArray, sql} from 'drizzle-orm';
+import {and, count, desc, eq, inArray, lt, sql} from 'drizzle-orm';
 
 import type {Database} from '../client';
 import {assets, renditions, videoEvents, videos, type VideoStatus} from '../schema';
@@ -72,6 +72,29 @@ export class VideoRepository {
       .orderBy(desc(videos.createdAt))
       .limit(limit)
       .offset(offset);
+  }
+
+  /** Uploads started before `before` and never completed (abandoned tabs). */
+  listStaleUploads(before: Date, limit = 100): Promise<Video[]> {
+    return this.db
+      .select()
+      .from(videos)
+      .where(and(eq(videos.status, 'uploading'), lt(videos.createdAt, before)))
+      .limit(limit);
+  }
+
+  /** Videos of a user still being worked on, for the concurrency limit. */
+  async countActive(userId: string): Promise<number> {
+    const [row] = await this.db
+      .select({n: count()})
+      .from(videos)
+      .where(
+        and(
+          eq(videos.userId, userId),
+          inArray(videos.status, ['uploaded', 'probing', 'processing']),
+        ),
+      );
+    return row?.n ?? 0;
   }
 
   /**

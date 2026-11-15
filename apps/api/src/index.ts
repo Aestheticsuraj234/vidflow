@@ -1,5 +1,5 @@
 import {createDb, VideoRepository} from '@vidflow/db';
-import {LiveHub, LivePublisher, Pipeline} from '@vidflow/queues';
+import {LiveHub, LivePublisher, Pipeline, RateLimiter} from '@vidflow/queues';
 import {createStorageFromEnv} from '@vidflow/storage';
 import {serve} from '@hono/node-server';
 
@@ -12,6 +12,7 @@ const {db, pool} = createDb(env.DATABASE_URL);
 const auth = createAuth(env, db);
 const storage = createStorageFromEnv();
 const pipeline = new Pipeline({redisUrl: env.REDIS_URL, prefix: env.QUEUE_PREFIX});
+const limiter = new RateLimiter(env.REDIS_URL, env.QUEUE_PREFIX);
 const liveHub = new LiveHub({redisUrl: env.REDIS_URL, prefix: env.QUEUE_PREFIX});
 const reader = new VideoRepository(db);
 const live = new LivePublisher({
@@ -29,6 +30,7 @@ const app = createApp({
   storage,
   pipeline,
   liveHub,
+  limiter,
   videoOptions: {onChange: live.videoChanged},
 });
 
@@ -41,6 +43,7 @@ async function shutdown(signal: string) {
   server.close();
   await live.close();
   await liveHub.close();
+  await limiter.close();
   await pipeline.close();
   await pool.end();
   process.exit(0);

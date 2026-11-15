@@ -49,3 +49,12 @@ export class PayloadTooLargeError extends AppError {
     super(413, 'payload_too_large', message);
   }
 }
+
+export class TooManyRequestsError extends AppError {
+  constructor(
+    message: string,
+    readonly retryAfterSec?: number,
+  ) {
+    super(429, 'rate_limited', message);
+  }
+}

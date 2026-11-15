@@ -1,0 +1,19 @@
+{
+  "name": "@vidflow/chaos-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:chaos": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@vidflow/db": "workspace:*",
+    "@vidflow/queues": "workspace:*",
+    "@vidflow/test-utils": "workspace:*",
+    "@vidflow/tsconfig": "workspace:*",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.0"
+  }
+}
