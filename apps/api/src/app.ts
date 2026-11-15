@@ -1,4 +1,4 @@
-import type {Database} from '@vidflow/db';
+import {VideoRepository, type Database, type Video} from '@vidflow/db';
 import type {StorageProvider} from '@vidflow/storage';
 import {Hono} from 'hono';
 import {cors} from 'hono/cors';
@@ -11,17 +11,26 @@ import {AppError, type ErrorBody} from './lib/errors';
 import {loadSession} from './middleware/session';
 import {healthRoutes} from './routes/health';
 import {meRoutes} from './routes/me';
+import {videoRoutes} from './routes/videos';
+import {UploadService} from './services/upload-service';
 
 export interface AppDeps {
   env: Env;
   db: Database;
   auth: Auth;
   storage: StorageProvider;
+  /** Called when an upload completes (starts the pipeline from Chapter 5). */
+  onUploaded?: (video: Video) => Promise<void>;
 }
 
 /** Builds the HTTP app. Kept free of `listen()` so tests can call it directly. */
-export function createApp({env, db, auth, storage}: AppDeps) {
+export function createApp({env, db, auth, storage, onUploaded}: AppDeps) {
   const app = new Hono<AppEnv>();
+  const videos = new VideoRepository(db);
+  const uploads = new UploadService(videos, storage, {
+    maxUploadBytes: env.MAX_UPLOAD_BYTES,
+    onUploaded,
+  });
 
   if (env.NODE_ENV !== 'test') app.use(logger());
 
@@ -41,6 +50,7 @@ export function createApp({env, db, auth, storage}: AppDeps) {
 
   app.use('/v1/*', loadSession(auth));
   app.route('/v1/me', meRoutes());
+  app.route('/v1/videos', videoRoutes(videos, uploads));
 
   app.notFound((c) => {
     const body: ErrorBody = {error: {code: 'not_found', message: 'Route not found'}};
