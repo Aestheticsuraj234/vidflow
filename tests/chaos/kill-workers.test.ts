@@ -29,6 +29,8 @@ function startWorker(app: string, extra: Record<string, string> = {}): ChildProc
       S3_FORCE_PATH_STYLE: 'true',
       S3_PUBLIC_BASE_URL: process.env.S3_PUBLIC_BASE_URL ?? 'http://localhost:9000/vidflow',
       QUEUE_PREFIX: t.prefix,
+      // Several workers on one host: no metrics ports to fight over.
+      METRICS_PORT: '0',
       // Fast recovery: a dead worker's job is noticed within ~3 s.
       TRANSCODE_LOCK_MS: '3000',
       FFMPEG_PRESET: 'medium',

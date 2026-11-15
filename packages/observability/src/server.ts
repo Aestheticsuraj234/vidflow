@@ -10,6 +10,8 @@ export function startMetricsServer(
   port: number,
   registry: Registry,
   healthy: () => boolean | Promise<boolean> = () => true,
+  /** A busy port must not take the worker down with it: report and carry on. */
+  onError: (err: Error) => void = (err) => console.error(`metrics server: ${err.message}`),
 ): Server {
   const server = createServer(async (req, res) => {
     try {
@@ -27,6 +29,7 @@ export function startMetricsServer(
       res.writeHead(500).end((err as Error).message);
     }
   });
+  server.on('error', onError);
   server.listen(port);
   return server;
 }

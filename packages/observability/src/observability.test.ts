@@ -54,4 +54,16 @@ describe('startMetricsServer', () => {
     expect((await fetch(`${base}/health`)).status).toBe(503);
     server.close();
   });
+
+  it('reports a busy port instead of crashing', async () => {
+    const metrics = createMetrics('svc');
+    const first = startMetricsServer(0, metrics.registry);
+    await new Promise((r) => first.once('listening', r));
+    const port = (first.address() as AddressInfo).port;
+    const err = await new Promise<Error>((resolve) =>
+      startMetricsServer(port, metrics.registry, () => true, resolve),
+    );
+    expect(err.message).toMatch(/EADDRINUSE/);
+    first.close();
+  });
 });

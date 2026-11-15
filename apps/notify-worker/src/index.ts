@@ -23,7 +23,12 @@ const pipeline = new Pipeline({
 });
 const server =
   env.METRICS_PORT > 0
-    ? startMetricsServer(env.METRICS_PORT, metrics.registry, () => pipeline.isAvailable())
+    ? startMetricsServer(
+        env.METRICS_PORT,
+        metrics.registry,
+        () => pipeline.isAvailable(),
+        (err) => log.error({err: err.message, port: env.METRICS_PORT}, 'metrics server failed'),
+      )
     : null;
 const webhooks = new WebhookRepository(db);
 const deps: NotifyDeps = {

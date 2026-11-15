@@ -61,7 +61,12 @@ export function createRuntime({
   // Healthy = Redis answers. Kubernetes restarts a worker that stays unhealthy.
   const server =
     metricsPort > 0
-      ? startMetricsServer(metricsPort, metrics.registry, () => pipeline.isAvailable())
+      ? startMetricsServer(
+          metricsPort,
+          metrics.registry,
+          () => pipeline.isAvailable(),
+          (err) => log.error({err: err.message, port: metricsPort}, 'metrics server failed'),
+        )
       : null;
   // The loader refers to `videos`, declared right below; it only runs later.
   const live = new LivePublisher({
