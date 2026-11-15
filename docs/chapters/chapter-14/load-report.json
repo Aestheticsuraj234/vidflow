@@ -1,0 +1,21 @@
+{
+  "api": "https://api.vidflow.test:8443",
+  "file": "sample.mp4",
+  "sizeBytes": 19901262,
+  "count": 8,
+  "concurrency": 4,
+  "ready": 8,
+  "failed": 0,
+  "rateLimitedResponses": 0,
+  "wallSeconds": 171.066,
+  "videosPerMinute": 2.8059345515765846,
+  "uploadSeconds": {
+    "p50": 1.02,
+    "p95": 1.085
+  },
+  "timeToReadySeconds": {
+    "p50": 79.101,
+    "p95": 102.752,
+    "max": 102.752
+  }
+}

@@ -9,4 +9,4 @@ coverage
 next-env.d.ts
 *.tsbuildinfo
 .DS_Store
-load-report.json
+tests/load/load-report.json
