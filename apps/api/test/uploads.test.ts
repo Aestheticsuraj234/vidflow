@@ -7,16 +7,13 @@ import type {
 } from '@vidflow/shared';
 import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
+import {jobIds} from '@vidflow/queues';
+
 import type {ErrorBody} from '../src/lib/errors';
 import {makeTestApp, signUp} from './helpers';
 
 const MiB = 1024 * 1024;
-const uploaded: string[] = [];
-const t = makeTestApp({
-  onUploaded: async (video) => {
-    uploaded.push(video.id);
-  },
-});
+const t = makeTestApp();
 let headers: Record<string, string>;
 
 beforeAll(async () => {
@@ -93,7 +90,9 @@ describe('direct uploads', () => {
     });
     expect(done.res.status).toBe(200);
     expect(done.json.status).toBe('uploaded');
-    expect(uploaded).toContain(id);
+    // The pipeline takes over: exactly one probe job for this video.
+    const job = await t.pipeline.queue('probe').getJob(jobIds.probe(id));
+    expect(job?.data).toEqual({videoId: id});
     expect((await t.storage.head(`sources/${id}/original.mp4`))?.sizeBytes).toBe(size);
 
     // Finished uploads can't be completed twice.

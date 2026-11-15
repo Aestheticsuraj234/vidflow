@@ -18,7 +18,8 @@
     "setup": "docker compose up -d && pnpm db:migrate && pnpm storage:setup",
     "storage:setup": "pnpm --filter @vidflow/storage storage:setup",
     "smoke": "./scripts/smoke-api.sh",
-    "db:generate": "pnpm --filter @vidflow/db db:generate"
+    "db:generate": "pnpm --filter @vidflow/db db:generate",
+    "queues:stats": "pnpm --filter @vidflow/queues queues:stats"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

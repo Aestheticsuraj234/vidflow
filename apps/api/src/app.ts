@@ -1,4 +1,5 @@
-import {VideoRepository, type Database, type Video} from '@vidflow/db';
+import {VideoRepository, type Database} from '@vidflow/db';
+import type {Pipeline} from '@vidflow/queues';
 import type {StorageProvider} from '@vidflow/storage';
 import {Hono} from 'hono';
 import {cors} from 'hono/cors';
@@ -19,17 +20,20 @@ export interface AppDeps {
   db: Database;
   auth: Auth;
   storage: StorageProvider;
-  /** Called when an upload completes (starts the pipeline from Chapter 5). */
-  onUploaded?: (video: Video) => Promise<void>;
+  pipeline: Pipeline;
 }
 
 /** Builds the HTTP app. Kept free of `listen()` so tests can call it directly. */
-export function createApp({env, db, auth, storage, onUploaded}: AppDeps) {
+export function createApp({env, db, auth, storage, pipeline}: AppDeps) {
   const app = new Hono<AppEnv>();
   const videos = new VideoRepository(db);
   const uploads = new UploadService(videos, storage, {
     maxUploadBytes: env.MAX_UPLOAD_BYTES,
-    onUploaded,
+    // The upload is done: hand the video to the pipeline.
+    onUploaded: async (video) => {
+      await pipeline.enqueueProbe(video.id);
+      await videos.addEvent(video.id, 'queue', 'Queued for probing');
+    },
   });
 
   if (env.NODE_ENV !== 'test') app.use(logger());
@@ -46,7 +50,7 @@ export function createApp({env, db, auth, storage, onUploaded}: AppDeps) {
 
   app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
-  app.route('/health', healthRoutes(db, storage));
+  app.route('/health', healthRoutes(db, storage, pipeline));
 
   app.use('/v1/*', loadSession(auth));
   app.route('/v1/me', meRoutes());

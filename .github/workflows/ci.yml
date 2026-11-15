@@ -18,7 +18,11 @@ jobs:
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
     env:
+      REDIS_URL: redis://localhost:6379
       S3_ENDPOINT: http://localhost:9000
       S3_ACCESS_KEY_ID: vidflow
       S3_SECRET_ACCESS_KEY: vidflow-secret-key

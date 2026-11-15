@@ -5,6 +5,9 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().int().positive().default(4000),
   API_URL: z.url().default('http://localhost:4000'),
   WEB_URL: z.url().default('http://localhost:3000'),
+  REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
+  /** Redis key prefix for queues; tests use their own. */
+  QUEUE_PREFIX: z.string().min(1).default('vidflow'),
   DATABASE_URL: z.string().min(1).default('postgres://postgres:postgres@localhost:5432/vidflow'),
   /** Largest upload accepted, in bytes. Default 10 GiB. */
   MAX_UPLOAD_BYTES: z.coerce

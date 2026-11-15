@@ -1,4 +1,5 @@
 import {createDb} from '@vidflow/db';
+import {Pipeline} from '@vidflow/queues';
 import {createStorageFromEnv} from '@vidflow/storage';
 import {serve} from '@hono/node-server';
 
@@ -10,7 +11,8 @@ const env = loadEnv();
 const {db, pool} = createDb(env.DATABASE_URL);
 const auth = createAuth(env, db);
 const storage = createStorageFromEnv();
-const app = createApp({env, db, auth, storage});
+const pipeline = new Pipeline({redisUrl: env.REDIS_URL, prefix: env.QUEUE_PREFIX});
+const app = createApp({env, db, auth, storage, pipeline});
 
 const server = serve({fetch: app.fetch, port: env.API_PORT}, (info) => {
   console.log(`Vidflow API listening on http://localhost:${info.port}`);
@@ -19,6 +21,7 @@ const server = serve({fetch: app.fetch, port: env.API_PORT}, (info) => {
 async function shutdown(signal: string) {
   console.log(`${signal} received, shutting down`);
   server.close();
+  await pipeline.close();
   await pool.end();
   process.exit(0);
 }

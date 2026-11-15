@@ -1,0 +1,4 @@
+{
+  "extends": "@vidflow/tsconfig/node.json",
+  "include": ["src", "test", "*.config.ts"]
+}
