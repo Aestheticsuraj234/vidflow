@@ -76,6 +76,8 @@ export interface VideoSummary {
   height: number | null;
   createdAt: string;
   readyAt: string | null;
+  /** HLS master playlist, once the video is ready. */
+  playbackUrl: string | null;
 }
 
 export interface UploadSession {

@@ -37,8 +37,8 @@ playback, Prometheus + Grafana for metrics, Caddy for HTTPS.
 | 5   | Queue architecture and BullMQ Flows         | One queue per stage, typed job contracts, a Flow (DAG) per video, idempotent job IDs, priorities, shared `packages/queues`          | ✅ Done  |
 | 6   | Probe service                               | `probe-worker`: ffprobe metadata, rejects bad files, picks the rendition ladder (never upscales), starts the transcode flow         | ✅ Done  |
 | 7   | Transcode service                           | `transcode-worker`: FFmpeg H.264/AAC per rendition, live progress from FFmpeg, CPU limits, temp-disk hygiene, FFmpeg image          | ✅ Done  |
-| 8   | HLS packaging and adaptive streaming        | `package-worker`: fMP4 HLS segments per rendition, master playlist, CDN-friendly paths and cache headers                            | ⏸ Next   |
-| 9   | Thumbnails and preview sprites              | `thumbnail-worker`: poster, thumbnails at intervals, scrub-preview sprite sheet + WebVTT, runs in parallel with transcoding         | Planned  |
+| 8   | HLS packaging and adaptive streaming        | `package-worker`: fMP4 HLS segments per rendition, master playlist, CDN-friendly paths and cache headers                            | ✅ Done  |
+| 9   | Thumbnails and preview sprites              | `thumbnail-worker`: poster, thumbnails at intervals, scrub-preview sprite sheet + WebVTT, runs in parallel with transcoding         | ⏸ Next   |
 | 10  | Real-time progress and webhooks             | Progress over Redis pub/sub → SSE; `notify-worker` sends HMAC-signed webhooks with backoff and a delivery log                       | Planned  |
 | 11  | Player and dashboard UI                     | hls.js player with quality switcher and scrub previews, video library, upload page, per-video job timeline, Bull Board admin        | Planned  |
 | 12  | Reliability: retries, cancellation, cleanup | Retries vs dead-letter queue, stalled jobs, cancel a video mid-flow, delete and storage cleanup, rate limits per user, chaos tests  | Planned  |

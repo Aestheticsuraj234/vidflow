@@ -54,7 +54,7 @@ export function createApp({env, db, auth, storage, pipeline}: AppDeps) {
 
   app.use('/v1/*', loadSession(auth));
   app.route('/v1/me', meRoutes());
-  app.route('/v1/videos', videoRoutes(videos, uploads));
+  app.route('/v1/videos', videoRoutes(videos, uploads, storage));
 
   app.notFound((c) => {
     const body: ErrorBody = {error: {code: 'not_found', message: 'Route not found'}};
