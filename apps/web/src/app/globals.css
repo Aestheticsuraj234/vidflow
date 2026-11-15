@@ -1,0 +1,43 @@
+@import 'tailwindcss';
+
+/*
+ * Vidflow design tokens. Dark by default: video looks best on dark.
+ * Accent is a soft violet used sparingly for primary actions and "Ready".
+ */
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-bg: #0b0d10;
+  --color-surface: #12151a;
+  --color-surface-2: #181c22;
+  --color-border: #242a33;
+  --color-fg: #e6e9ee;
+  --color-muted: #8b94a3;
+  --color-accent: #8b7cff;
+  --color-accent-fg: #0b0820;
+  --color-danger: #ff6b6b;
+  --color-warning: #f5c451;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Faint grid behind auth pages, like graph paper in a lab notebook. */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}

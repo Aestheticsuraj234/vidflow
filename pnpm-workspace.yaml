@@ -1,0 +1,10 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+
+# Peers must be explicit, so optional peers stay out of production images.
+autoInstallPeers: false
