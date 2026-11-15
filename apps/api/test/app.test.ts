@@ -1,12 +1,12 @@
 import {randomUUID} from 'node:crypto';
 
+import {createDb} from '@vidflow/db';
 import type {HealthResponse, PublicUser} from '@vidflow/shared';
 import {afterAll, describe, expect, it} from 'vitest';
 
 import {createApp} from '../src/app';
 import {createAuth} from '../src/auth';
 import {loadEnv} from '../src/env';
-import {createPool} from '../src/lib/db';
 import type {ErrorBody} from '../src/lib/errors';
 
 const env = loadEnv({
@@ -14,9 +14,9 @@ const env = loadEnv({
   NODE_ENV: 'test',
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? 'test-secret-test-secret-test-secret-12',
 });
-const pool = createPool(env.DATABASE_URL);
-const auth = createAuth(env, pool);
-const app = createApp({env, pool, auth});
+const {db, pool} = createDb(env.DATABASE_URL);
+const auth = createAuth(env, db);
+const app = createApp({env, db, auth});
 
 const origin = {Origin: env.WEB_URL};
 
@@ -39,13 +39,13 @@ describe('GET /health', () => {
   });
 
   it('returns 503 when the database is unreachable', async () => {
-    const deadPool = createPool('postgres://postgres@127.0.0.1:1/none');
-    const deadApp = createApp({env, pool: deadPool, auth});
+    const dead = createDb('postgres://postgres@127.0.0.1:1/none');
+    const deadApp = createApp({env, db: dead.db, auth});
     const res = await deadApp.request('/health');
     expect(res.status).toBe(503);
     const body = (await res.json()) as HealthResponse;
     expect(body).toMatchObject({status: 'degraded', checks: {database: 'down'}});
-    await deadPool.end();
+    await dead.pool.end();
   });
 });
 
