@@ -10,6 +10,8 @@ export const QUEUES = {
   package: 'package',
   thumbnail: 'thumbnail',
   notify: 'notify',
+  /** One webhook delivery (Chapter 10): its own retries, per endpoint. */
+  deliver: 'deliver',
 } as const;
 export type QueueName = keyof typeof QUEUES;
 export const QUEUE_NAMES = Object.keys(QUEUES) as QueueName[];
@@ -48,6 +50,7 @@ export const jobSchemas = {
     userId: z.string().min(1),
     event: z.enum(WEBHOOK_EVENTS),
   }),
+  deliver: z.object({deliveryId: z.uuid()}),
 } satisfies Record<QueueName, z.ZodType>;
 
 export type JobData<Q extends QueueName> = z.infer<(typeof jobSchemas)[Q]>;
@@ -79,12 +82,18 @@ export interface NotifyResult {
   deliveries: number;
 }
 
+export interface DeliverResult {
+  statusCode: number;
+  durationMs: number;
+}
+
 export interface JobResults {
   probe: ProbeResult;
   transcode: TranscodeResult;
   package: PackageResult;
   thumbnail: ThumbnailResult;
   notify: NotifyResult;
+  deliver: DeliverResult;
 }
 
 /**
@@ -98,6 +107,7 @@ export const jobIds = {
   package: (videoId: string) => `package-${videoId}`,
   thumbnail: (videoId: string) => `thumbnail-${videoId}`,
   notify: (videoId: string, event: WebhookEvent) => `notify-${videoId}-${event}`,
+  deliver: (deliveryId: string) => `deliver-${deliveryId}`,
 };
 
 /**

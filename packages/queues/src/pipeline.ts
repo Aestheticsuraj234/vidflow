@@ -120,6 +120,25 @@ export class Pipeline {
     );
   }
 
+  /**
+   * One job per webhook delivery. Receivers go down for minutes at a time, so
+   * deliveries retry with a long exponential backoff: 10 s, 20 s, 40 s … about
+   * 42 minutes over 8 attempts.
+   */
+  async enqueueDeliveries(deliveryIds: string[]): Promise<void> {
+    await this.queue('deliver').addBulk(
+      deliveryIds.map((deliveryId) => ({
+        name: 'deliver',
+        data: {deliveryId},
+        opts: {
+          jobId: jobIds.deliver(deliveryId),
+          attempts: 8,
+          backoff: {type: 'exponential', delay: 10_000},
+        },
+      })),
+    );
+  }
+
   /** Waiting/active/failed counts per queue: dashboards and autoscaling. */
   async counts(): Promise<Record<QueueName, Record<string, number>>> {
     const entries = await Promise.all(

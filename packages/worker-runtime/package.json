@@ -1,0 +1,22 @@
+{
+  "name": "@vidflow/worker-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@vidflow/db": "workspace:*",
+    "@vidflow/queues": "workspace:*",
+    "@vidflow/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@vidflow/tsconfig": "workspace:*",
+    "@types/node": "^26.6.6"
+  }
+}

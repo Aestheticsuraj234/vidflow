@@ -1,4 +1,4 @@
-import type {VideoRepository} from '@vidflow/db';
+import type {Video, VideoRepository} from '@vidflow/db';
 import {gopFrames, planRenditions, probe, ProbeError, type MediaInfo} from '@vidflow/media';
 import {UnrecoverableError, type JobData, type Pipeline, type ProbeResult} from '@vidflow/queues';
 import type {StorageProvider} from '@vidflow/storage';
@@ -8,6 +8,8 @@ export interface ProbeDeps {
   storage: StorageProvider;
   pipeline: Pipeline;
   maxDurationMs: number;
+  /** Called once when the video starts processing (sends `video.processing`). */
+  onProcessing?: (video: Video) => Promise<void>;
   /** Swappable for tests. */
   probe?: (input: string) => Promise<MediaInfo>;
 }
@@ -77,6 +79,7 @@ export async function probeVideo(
   if (video.status !== 'processing') {
     const moved = await videos.transition(videoId, 'processing', {progress: 5});
     if (!moved) return {durationMs: info.durationMs, renditions: []}; // canceled meanwhile
+    await deps.onProcessing?.(moved);
     await videos.addEvent(
       videoId,
       'probe',

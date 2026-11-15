@@ -1,5 +1,10 @@
-import {VideoRepository, type Database} from '@vidflow/db';
-import type {Pipeline} from '@vidflow/queues';
+import {
+  VideoRepository,
+  WebhookRepository,
+  type Database,
+  type VideoRepositoryOptions,
+} from '@vidflow/db';
+import type {LiveHub, Pipeline} from '@vidflow/queues';
 import type {StorageProvider} from '@vidflow/storage';
 import {Hono} from 'hono';
 import {cors} from 'hono/cors';
@@ -11,8 +16,10 @@ import type {Env} from './env';
 import {AppError, type ErrorBody} from './lib/errors';
 import {loadSession} from './middleware/session';
 import {healthRoutes} from './routes/health';
+import {liveRoutes} from './routes/live';
 import {meRoutes} from './routes/me';
 import {videoRoutes} from './routes/videos';
+import {webhookRoutes} from './routes/webhooks';
 import {UploadService} from './services/upload-service';
 
 export interface AppDeps {
@@ -21,18 +28,23 @@ export interface AppDeps {
   auth: Auth;
   storage: StorageProvider;
   pipeline: Pipeline;
+  /** Fans live updates out to SSE connections. */
+  liveHub: LiveHub;
+  /** Publishes the API's own video changes (uploads) live. */
+  videoOptions?: VideoRepositoryOptions;
 }
 
 /** Builds the HTTP app. Kept free of `listen()` so tests can call it directly. */
-export function createApp({env, db, auth, storage, pipeline}: AppDeps) {
+export function createApp({env, db, auth, storage, pipeline, liveHub, videoOptions}: AppDeps) {
   const app = new Hono<AppEnv>();
-  const videos = new VideoRepository(db);
+  const videos = new VideoRepository(db, videoOptions);
   const uploads = new UploadService(videos, storage, {
     maxUploadBytes: env.MAX_UPLOAD_BYTES,
     // The upload is done: hand the video to the pipeline.
     onUploaded: async (video) => {
       await pipeline.enqueueProbe(video.id);
       await videos.addEvent(video.id, 'queue', 'Queued for probing');
+      await pipeline.enqueueNotify(video.id, video.userId, 'video.uploaded');
     },
   });
 
@@ -55,6 +67,13 @@ export function createApp({env, db, auth, storage, pipeline}: AppDeps) {
   app.use('/v1/*', loadSession(auth));
   app.route('/v1/me', meRoutes());
   app.route('/v1/videos', videoRoutes(videos, uploads, storage));
+  app.route('/v1/live', liveRoutes(liveHub));
+  app.route(
+    '/v1/webhooks',
+    webhookRoutes(new WebhookRepository(db), pipeline, {
+      requireHttps: env.NODE_ENV === 'production',
+    }),
+  );
 
   app.notFound((c) => {
     const body: ErrorBody = {error: {code: 'not_found', message: 'Route not found'}};

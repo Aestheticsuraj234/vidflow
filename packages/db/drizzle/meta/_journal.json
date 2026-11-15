@@ -8,6 +8,13 @@
       "when": 1794729855948,
       "tag": "0000_initial-schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794732576769,
+      "tag": "0001_webhook-delivery-once",
+      "breakpoints": true
     }
   ]
 }

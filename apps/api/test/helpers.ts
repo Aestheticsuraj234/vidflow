@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 
 import {createDb} from '@vidflow/db';
-import {Pipeline, QUEUE_NAMES} from '@vidflow/queues';
+import {LiveHub, Pipeline, QUEUE_NAMES} from '@vidflow/queues';
 import {S3StorageProvider} from '@vidflow/storage';
 
 import {createApp, type AppDeps} from '../src/app';
@@ -34,19 +34,29 @@ export function testPipeline(redisUrl = env.REDIS_URL) {
   });
 }
 
+export function testLiveHub() {
+  return new LiveHub({
+    redisUrl: env.REDIS_URL,
+    prefix: `vidflow-test-api-${process.pid}`,
+    onError: () => undefined,
+  });
+}
+
 /** A full app on the real database and storage, plus a teardown. */
 export function makeTestApp(overrides: Partial<AppDeps> = {}) {
   const {db, pool} = createDb(env.DATABASE_URL);
   const auth = createAuth(env, db);
   const storage = new S3StorageProvider(storageConfig);
   const pipeline = testPipeline();
-  const app = createApp({env, db, auth, storage, pipeline, ...overrides});
+  const liveHub = testLiveHub();
+  const app = createApp({env, db, auth, storage, pipeline, liveHub, ...overrides});
   const close = async () => {
     for (const name of QUEUE_NAMES) await pipeline.queue(name).obliterate({force: true});
     await pipeline.close();
+    await liveHub.close();
     await pool.end();
   };
-  return {app, db, storage, pipeline, close};
+  return {app, db, storage, pipeline, liveHub, close};
 }
 
 /** Signs up a fresh user and returns headers that carry their session. */

@@ -16,8 +16,33 @@ export type VideoEvent = typeof videoEvents.$inferSelect;
 export type VideoPatch = Partial<Omit<NewVideo, 'id' | 'userId' | 'status' | 'createdAt'>>;
 
 /** Reads and writes videos, their renditions, assets and timeline. */
+export interface VideoChange {
+  videoId: string;
+  /** Set when a timeline event was added. */
+  event?: {stage: string; message: string};
+}
+
+export interface VideoRepositoryOptions {
+  /**
+   * Called after anything a viewer would see changes: status, progress, the
+   * timeline. Chapter 10 publishes these to Redis for live updates.
+   */
+  onChange?: (change: VideoChange) => void;
+}
+
 export class VideoRepository {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly options: VideoRepositoryOptions = {},
+  ) {}
+
+  private changed(change: VideoChange): void {
+    try {
+      this.options.onChange?.(change);
+    } catch {
+      // Live updates are best effort; never fail a write because of them.
+    }
+  }
 
   async create(input: Pick<NewVideo, 'userId' | 'title'> & VideoPatch): Promise<Video> {
     const [row] = await this.db.insert(videos).values(input).returning();
@@ -64,6 +89,7 @@ export class VideoRepository {
       .set({...patch, status: to})
       .where(and(eq(videos.id, id), inArray(videos.status, allowedFrom(to))))
       .returning();
+    if (row) this.changed({videoId: id});
     return row;
   }
 
@@ -76,6 +102,7 @@ export class VideoRepository {
 
   async update(id: string, patch: VideoPatch): Promise<void> {
     await this.db.update(videos).set(patch).where(eq(videos.id, id));
+    this.changed({videoId: id});
   }
 
   async delete(id: string): Promise<void> {
@@ -107,6 +134,7 @@ export class VideoRepository {
         select coalesce(round(avg(progress) * 0.8), 0)::int from renditions where video_id = ${videoId}
       ))
       where id = ${videoId} and status = 'processing'`);
+    this.changed({videoId});
   }
 
   async findRendition(id: string): Promise<Rendition | undefined> {
@@ -153,6 +181,7 @@ export class VideoRepository {
 
   async addEvent(videoId: string, stage: string, message: string): Promise<void> {
     await this.db.insert(videoEvents).values({videoId, stage, message});
+    this.changed({videoId, event: {stage, message}});
   }
 
   listEvents(videoId: string): Promise<VideoEvent[]> {

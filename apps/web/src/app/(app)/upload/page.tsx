@@ -15,6 +15,7 @@ import {cn} from '@/lib/cn';
 import {formatBytes, formatDuration} from '@/lib/format';
 import {browserIO} from '@/lib/upload/browser-io';
 import {fingerprint, uploadFile, type UploadProgress} from '@/lib/upload/uploader';
+import {useLiveVideos} from '@/lib/use-live-videos';
 
 type Phase = 'idle' | 'uploading' | 'paused' | 'done' | 'error';
 
@@ -45,6 +46,23 @@ export default function UploadPage() {
   useEffect(() => {
     void loadRecent();
   }, [loadRecent]);
+
+  // Status and progress change as the pipeline runs: apply them live.
+  const {connected} = useLiveVideos((m) => {
+    setRecent((list) => {
+      if (!list.some((v) => v.id === m.videoId)) {
+        void loadRecent();
+        return list;
+      }
+      return list.map((v) =>
+        v.id === m.videoId
+          ? {...v, status: m.status as VideoSummary['status'], progress: m.progress, error: m.error}
+          : v,
+      );
+    });
+    // Poster and playback URL appear when the video is ready.
+    if (m.status === 'ready' && !m.event) void loadRecent();
+  });
 
   function pick(next: File | undefined) {
     if (!next) return;
@@ -256,18 +274,44 @@ export default function UploadPage() {
 
         {recent.length > 0 && (
           <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-muted">Recent uploads</h2>
+            <h2 className="flex items-center gap-2 text-sm font-medium text-muted">
+              Recent uploads
+              <span
+                className={cn('size-1.5 rounded-full', connected ? 'bg-accent' : 'bg-muted')}
+                title={connected ? 'Live' : 'Reconnecting…'}
+              />
+            </h2>
             <ul className="divide-y divide-border rounded-md border border-border bg-surface">
               {recent.map((v) => (
-                <li key={v.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0">
+                <li key={v.id} className="flex items-center gap-4 px-4 py-3">
+                  <div className="aspect-video w-24 shrink-0 overflow-hidden rounded-sm bg-surface-2">
+                    {v.posterUrl && (
+                      <img src={v.posterUrl} alt="" className="size-full object-cover" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{v.title}</p>
                     <p className="font-mono text-xs text-muted">
                       {v.sourceSizeBytes ? formatBytes(v.sourceSizeBytes) : '—'} ·{' '}
                       {new Date(v.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  <StatusBadge status={v.status} />
+                  <div className="flex w-36 flex-col items-end gap-1.5">
+                    <StatusBadge status={v.status} />
+                    {(v.status === 'probing' || v.status === 'processing') && (
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-surface-2">
+                        <div
+                          className="h-full bg-accent transition-[width] duration-500"
+                          style={{width: `${v.progress}%`}}
+                        />
+                      </div>
+                    )}
+                    {v.status === 'failed' && v.error && (
+                      <p className="max-w-36 truncate text-xs text-danger" title={v.error}>
+                        {v.error}
+                      </p>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

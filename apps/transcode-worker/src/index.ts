@@ -1,14 +1,15 @@
-import {createDb, VideoRepository} from '@vidflow/db';
 import {createWorker, onFinalFailure, shutdownOnSignal} from '@vidflow/queues';
-import {createStorageFromEnv} from '@vidflow/storage';
+import {createRuntime} from '@vidflow/worker-runtime';
 
 import {loadEnv} from './env';
 import {sweepTempDirs, transcodeRendition} from './transcode-rendition';
 
 const env = loadEnv();
-const {db, pool} = createDb(env.DATABASE_URL);
-const videos = new VideoRepository(db);
-const storage = createStorageFromEnv();
+const rt = createRuntime({
+  databaseUrl: env.DATABASE_URL,
+  redisUrl: env.REDIS_URL,
+  queuePrefix: env.QUEUE_PREFIX,
+});
 
 const swept = await sweepTempDirs(env.TRANSCODE_TMP_DIR);
 if (swept > 0) console.log(`removed ${swept} stale temp folder(s)`);
@@ -18,8 +19,8 @@ const worker = createWorker(
   (data, job) =>
     transcodeRendition(
       {
-        videos,
-        storage,
+        videos: rt.videos,
+        storage: rt.storage,
         tmpDir: env.TRANSCODE_TMP_DIR,
         preset: env.FFMPEG_PRESET,
         threads: env.FFMPEG_THREADS,
@@ -39,8 +40,8 @@ const worker = createWorker(
   },
 );
 onFinalFailure(worker, async (job, err) => {
-  await videos.updateRendition(job.data.renditionId, {status: 'failed'});
-  await videos.fail(
+  await rt.videos.updateRendition(job.data.renditionId, {status: 'failed'});
+  await rt.failVideo(
     job.data.videoId,
     `Transcode ${job.data.rendition.name} failed: ${err.message}`,
   );
@@ -49,4 +50,4 @@ onFinalFailure(worker, async (job, err) => {
 console.log(
   `transcode-worker started (concurrency ${env.TRANSCODE_CONCURRENCY}, preset ${env.FFMPEG_PRESET})`,
 );
-shutdownOnSignal([worker], () => pool.end());
+shutdownOnSignal([worker], rt.close);

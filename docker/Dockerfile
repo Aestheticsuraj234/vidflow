@@ -28,7 +28,7 @@ RUN pnpm turbo run build --filter='./apps/*' --filter='!@vidflow/web'
 RUN --mount=type=secret,id=extra_ca,required=false \
     --mount=type=cache,id=pnpm,target=/pnpm/store \
     NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca sh -c '\
-      for app in api probe-worker transcode-worker package-worker thumbnail-worker; do \
+      for app in api probe-worker transcode-worker package-worker thumbnail-worker notify-worker; do \
         pnpm --filter @vidflow/$app deploy --prod --legacy /out/$app || exit 1; \
       done'
 
@@ -73,5 +73,13 @@ FROM media-runtime AS thumbnail-worker
 COPY --from=build /out/thumbnail-worker ./
 RUN mkdir -p /tmp/vidflow && chown node /tmp/vidflow
 ENV THUMBNAIL_TMP_DIR=/tmp/vidflow
+USER node
+CMD ["node", "dist/index.js"]
+
+# Webhooks need no FFmpeg: a plain Node image.
+FROM ${BASE_REGISTRY}/node:22-slim AS notify-worker
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /out/notify-worker ./
 USER node
 CMD ["node", "dist/index.js"]

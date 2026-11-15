@@ -39,8 +39,8 @@ playback, Prometheus + Grafana for metrics, Caddy for HTTPS.
 | 7   | Transcode service                           | `transcode-worker`: FFmpeg H.264/AAC per rendition, live progress from FFmpeg, CPU limits, temp-disk hygiene, FFmpeg image          | ✅ Done  |
 | 8   | HLS packaging and adaptive streaming        | `package-worker`: fMP4 HLS segments per rendition, master playlist, CDN-friendly paths and cache headers                            | ✅ Done  |
 | 9   | Thumbnails and preview sprites              | `thumbnail-worker`: poster, thumbnails at intervals, scrub-preview sprite sheet + WebVTT, runs in parallel with transcoding         | ✅ Done  |
-| 10  | Real-time progress and webhooks             | Progress over Redis pub/sub → SSE; `notify-worker` sends HMAC-signed webhooks with backoff and a delivery log                       | ⏸ Next   |
-| 11  | Player and dashboard UI                     | hls.js player with quality switcher and scrub previews, video library, upload page, per-video job timeline, Bull Board admin        | Planned  |
+| 10  | Real-time progress and webhooks             | Progress over Redis pub/sub → SSE; `notify-worker` sends HMAC-signed webhooks with backoff and a delivery log                       | ✅ Done  |
+| 11  | Player and dashboard UI                     | hls.js player with quality switcher and scrub previews, video library, upload page, per-video job timeline, Bull Board admin        | ⏸ Next   |
 | 12  | Reliability: retries, cancellation, cleanup | Retries vs dead-letter queue, stalled jobs, cancel a video mid-flow, delete and storage cleanup, rate limits per user, chaos tests  | Planned  |
 | 13  | Observability                               | Structured logs per service, Prometheus metrics (queue depth, encode speed, failures), alerts, Grafana dashboard                    | Planned  |
 | 14  | Deployment, autoscaling and load testing    | Image per service, production Compose + Caddy, R2 + CDN, scale transcode workers by queue depth, load test, final README            | Planned  |
