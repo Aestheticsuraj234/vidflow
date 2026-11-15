@@ -1,0 +1,1 @@
+ALTER TABLE "webhook_deliveries" ADD CONSTRAINT "webhook_deliveries_once_uq" UNIQUE("webhook_id","video_id","event");

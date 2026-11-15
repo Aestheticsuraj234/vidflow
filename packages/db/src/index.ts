@@ -4,3 +4,4 @@ export * from './repositories/video-repository';
 export * as schema from './schema';
 export type {AssetKind, RenditionStatus, VideoStatus, WebhookDeliveryStatus} from './schema';
 export * from './video-state';
+export * from './repositories/webhook-repository';

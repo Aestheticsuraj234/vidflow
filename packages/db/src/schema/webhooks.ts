@@ -1,4 +1,14 @@
-import {boolean, index, integer, jsonb, pgTable, text, timestamp, uuid} from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 import {user} from './auth';
 import {webhookDeliveryStatus} from './enums';
@@ -39,5 +49,10 @@ export const webhookDeliveries = pgTable(
     deliveredAt: timestamp({withTimezone: true}),
     createdAt: timestamp({withTimezone: true}).notNull().defaultNow(),
   },
-  (t) => [index('webhook_deliveries_webhook_idx').on(t.webhookId, t.createdAt)],
+  (t) => [
+    index('webhook_deliveries_webhook_idx').on(t.webhookId, t.createdAt),
+    // One delivery per endpoint, video and event: a retried notify job can't
+    // send the same webhook twice. (Test pings have no video and aren't affected.)
+    unique('webhook_deliveries_once_uq').on(t.webhookId, t.videoId, t.event),
+  ],
 );

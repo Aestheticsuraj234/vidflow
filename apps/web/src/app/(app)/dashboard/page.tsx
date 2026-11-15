@@ -10,7 +10,7 @@ import {authClient} from '@/lib/auth-client';
 const FEATURES = [
   {icon: Upload, title: 'Upload', text: 'Resumable uploads straight to storage.', href: '/upload'},
   {icon: Film, title: 'Library', text: 'Your videos with an adaptive player.', chapter: 11},
-  {icon: Webhook, title: 'Webhooks', text: 'Get told when a video is ready.', chapter: 10},
+  {icon: Webhook, title: 'Webhooks', text: 'Get told when a video is ready.', href: '/webhooks'},
   {icon: KeyRound, title: 'API keys', text: 'Upload from your own app.', chapter: 11},
 ];
 

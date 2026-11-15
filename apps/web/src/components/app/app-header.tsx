@@ -12,6 +12,7 @@ import {cn} from '@/lib/cn';
 const NAV = [
   {href: '/dashboard', label: 'Dashboard'},
   {href: '/upload', label: 'Upload'},
+  {href: '/webhooks', label: 'Webhooks'},
 ];
 
 /** Top bar for signed-in pages. Sends you to sign-in if the session is gone. */
