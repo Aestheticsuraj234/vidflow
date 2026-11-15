@@ -62,6 +62,25 @@ export function createWorker<Q extends QueueName>(
 }
 
 /**
+ * Runs `handler` once a job has failed for good: out of attempts, or failed
+ * with `UnrecoverableError`. Earlier failures will be retried, so they're left alone.
+ */
+export function onFinalFailure<D, R>(
+  worker: Worker<D, R>,
+  handler: (job: Job<D, R>, err: Error) => Promise<void>,
+  log: Log = consoleLog,
+): void {
+  worker.on('failed', (job, err) => {
+    if (!job) return;
+    const final = err.name === 'UnrecoverableError' || job.attemptsMade >= (job.opts.attempts ?? 1);
+    if (!final) return;
+    handler(job, err).catch((e: Error) =>
+      log.error({jobId: job.id, err: e.message}, 'final-failure handler failed'),
+    );
+  });
+}
+
+/**
  * Stop taking new jobs, let active ones finish (BullMQ waits for them), then
  * clean up. Kubernetes sends SIGTERM and waits `terminationGracePeriodSeconds`.
  */

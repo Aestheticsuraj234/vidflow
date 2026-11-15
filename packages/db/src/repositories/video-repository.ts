@@ -67,6 +67,13 @@ export class VideoRepository {
     return row;
   }
 
+  /** Marks a video failed (from any non-final state) and records why. */
+  async fail(id: string, error: string): Promise<Video | undefined> {
+    const row = await this.transition(id, 'failed', {error: error.slice(0, 1000)});
+    if (row) await this.addEvent(id, 'failed', error.slice(0, 1000));
+    return row;
+  }
+
   async update(id: string, patch: VideoPatch): Promise<void> {
     await this.db.update(videos).set(patch).where(eq(videos.id, id));
   }
