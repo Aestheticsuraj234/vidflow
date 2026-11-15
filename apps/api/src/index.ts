@@ -1,4 +1,5 @@
 import {createDb, VideoRepository} from '@vidflow/db';
+import {createLogger} from '@vidflow/observability';
 import {LiveHub, LivePublisher, Pipeline, RateLimiter} from '@vidflow/queues';
 import {createStorageFromEnv} from '@vidflow/storage';
 import {serve} from '@hono/node-server';
@@ -8,6 +9,7 @@ import {createAuth} from './auth';
 import {loadEnv} from './env';
 
 const env = loadEnv();
+const log = createLogger('api');
 const {db, pool} = createDb(env.DATABASE_URL);
 const auth = createAuth(env, db);
 const storage = createStorageFromEnv();
@@ -31,15 +33,16 @@ const app = createApp({
   pipeline,
   liveHub,
   limiter,
+  log,
   videoOptions: {onChange: live.videoChanged},
 });
 
 const server = serve({fetch: app.fetch, port: env.API_PORT}, (info) => {
-  console.log(`Vidflow API listening on http://localhost:${info.port}`);
+  log.info(`Vidflow API listening on http://localhost:${info.port}`);
 });
 
 async function shutdown(signal: string) {
-  console.log(`${signal} received, shutting down`);
+  log.info({signal}, 'shutting down');
   server.close();
   await live.close();
   await liveHub.close();

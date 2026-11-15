@@ -1,4 +1,10 @@
 import {createDb, VideoRepository, WebhookRepository} from '@vidflow/db';
+import {
+  createLogger,
+  createMetrics,
+  instrumentWorker,
+  startMetricsServer,
+} from '@vidflow/observability';
 import {createWorker, onFinalFailure, Pipeline, shutdownOnSignal} from '@vidflow/queues';
 import {createStorageFromEnv} from '@vidflow/storage';
 
@@ -7,8 +13,18 @@ import {sweepStaleUploads} from './maintenance';
 import {deliver, fanOut, type NotifyDeps} from './notify';
 
 const env = loadEnv();
+const log = createLogger('notify-worker');
+const metrics = createMetrics('notify-worker');
 const {db, pool} = createDb(env.DATABASE_URL);
-const pipeline = new Pipeline({redisUrl: env.REDIS_URL, prefix: env.QUEUE_PREFIX});
+const pipeline = new Pipeline({
+  redisUrl: env.REDIS_URL,
+  prefix: env.QUEUE_PREFIX,
+  onError: (err) => log.error({err: err.message}, 'redis error'),
+});
+const server =
+  env.METRICS_PORT > 0
+    ? startMetricsServer(env.METRICS_PORT, metrics.registry, () => pipeline.isAvailable())
+    : null;
 const webhooks = new WebhookRepository(db);
 const deps: NotifyDeps = {
   videos: new VideoRepository(db),
@@ -22,6 +38,7 @@ const options = {
   redisUrl: env.REDIS_URL,
   prefix: env.QUEUE_PREFIX,
   concurrency: env.NOTIFY_CONCURRENCY,
+  log,
 };
 
 const notifyWorker = createWorker('notify', (data) => fanOut(deps, data), options);
@@ -48,7 +65,7 @@ await pipeline
     {name: 'stale-uploads', data: {task: 'stale-uploads'}},
   );
 
-onFinalFailure(notifyWorker, async () => undefined, undefined, pipeline);
+onFinalFailure(notifyWorker, async () => undefined, log, pipeline);
 
 // Out of retries: the log already holds the last error; mark it failed.
 onFinalFailure(
@@ -64,13 +81,20 @@ onFinalFailure(
       });
     }
   },
-  undefined,
+  log,
   pipeline,
 );
 
-if (env.WEBHOOK_ALLOW_PRIVATE) console.warn('WEBHOOK_ALLOW_PRIVATE is on: development only');
-console.log(`notify-worker started (concurrency ${env.NOTIFY_CONCURRENCY})`);
-shutdownOnSignal([notifyWorker, deliverWorker, maintenanceWorker], async () => {
-  await pipeline.close();
-  await pool.end();
-});
+const workers = [notifyWorker, deliverWorker, maintenanceWorker];
+for (const w of workers) instrumentWorker(w, metrics);
+if (env.WEBHOOK_ALLOW_PRIVATE) log.warn('WEBHOOK_ALLOW_PRIVATE is on: development only');
+log.info(`notify-worker started (concurrency ${env.NOTIFY_CONCURRENCY})`);
+shutdownOnSignal(
+  workers,
+  async () => {
+    server?.close();
+    await pipeline.close();
+    await pool.end();
+  },
+  log,
+);

@@ -6,6 +6,8 @@ import {probeVideo} from './probe-video';
 
 const env = loadEnv();
 const rt = createRuntime({
+  service: 'probe-worker',
+  metricsPort: env.METRICS_PORT,
   databaseUrl: env.DATABASE_URL,
   redisUrl: env.REDIS_URL,
   queuePrefix: env.QUEUE_PREFIX,
@@ -24,14 +26,20 @@ const worker = createWorker(
       },
       data,
     ),
-  {redisUrl: env.REDIS_URL, prefix: env.QUEUE_PREFIX, concurrency: env.PROBE_CONCURRENCY},
+  {
+    redisUrl: env.REDIS_URL,
+    prefix: env.QUEUE_PREFIX,
+    log: rt.log,
+    concurrency: env.PROBE_CONCURRENCY,
+  },
 );
 onFinalFailure(
   worker,
   (job, err) => rt.failVideo(job.data.videoId, `Probe failed: ${err.message}`),
-  undefined,
+  rt.log,
   rt.pipeline,
 );
 
-console.log(`probe-worker started (concurrency ${env.PROBE_CONCURRENCY})`);
-shutdownOnSignal([worker], rt.close);
+rt.instrument(worker);
+rt.log.info(`probe-worker started (concurrency ${env.PROBE_CONCURRENCY})`);
+shutdownOnSignal([worker], rt.close, rt.log);

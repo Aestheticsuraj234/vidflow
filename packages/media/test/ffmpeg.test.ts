@@ -1,4 +1,4 @@
-import {mkdtemp, rm, stat} from 'node:fs/promises';
+import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -138,9 +138,11 @@ describe('runFfmpeg + h264Args', () => {
     const run = runFfmpeg(['-y', '-re', '-f', 'lavfi', '-i', 'testsrc2=rate=30', '-t', '30', out], {
       signal: controller.signal,
     });
+    const started = Date.now();
     setTimeout(() => controller.abort(), 300);
     await expect(run).rejects.toThrow('Aborted');
-    await expect(stat(out).then((s) => s.size)).resolves.toBeGreaterThanOrEqual(0);
+    // A 30 s real-time encode stopped within a few seconds of the abort.
+    expect(Date.now() - started).toBeLessThan(5000);
   });
 
   it('enforces a timeout', async () => {

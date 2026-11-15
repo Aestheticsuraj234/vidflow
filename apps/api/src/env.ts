@@ -23,6 +23,8 @@ const envSchema = z.object({
   UPLOADS_PER_HOUR: z.coerce.number().int().positive().default(30),
   /** Videos one user may have in the pipeline (uploaded → processing) at once. */
   MAX_ACTIVE_VIDEOS: z.coerce.number().int().positive().default(5),
+  /** Bearer token for GET /metrics; unset means open (fine on a private network). */
+  METRICS_TOKEN: z.string().optional(),
   BETTER_AUTH_SECRET: z
     .string()
     .min(32, {message: 'BETTER_AUTH_SECRET must be at least 32 characters'}),

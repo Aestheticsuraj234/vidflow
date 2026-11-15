@@ -13,7 +13,8 @@
   "dependencies": {
     "@vidflow/db": "workspace:*",
     "@vidflow/queues": "workspace:*",
-    "@vidflow/storage": "workspace:*"
+    "@vidflow/storage": "workspace:*",
+    "@vidflow/observability": "workspace:*"
   },
   "devDependencies": {
     "@vidflow/tsconfig": "workspace:*",

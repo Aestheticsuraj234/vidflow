@@ -5,15 +5,16 @@ import {
   type Database,
   type VideoRepositoryOptions,
 } from '@vidflow/db';
+import {createLogger, createMetrics, type Logger, type Metrics} from '@vidflow/observability';
 import type {LiveHub, Pipeline, RateLimiter} from '@vidflow/queues';
 import type {StorageProvider} from '@vidflow/storage';
 import {Hono} from 'hono';
 import {cors} from 'hono/cors';
-import {logger} from 'hono/logger';
 
 import type {AppEnv} from './app-env';
 import type {Auth} from './auth';
 import type {Env} from './env';
+import {createApiMetrics} from './lib/metrics';
 import {AppError, TooManyRequestsError, type ErrorBody} from './lib/errors';
 import {loadSession} from './middleware/session';
 import {ADMIN_BASE_PATH, adminRoutes} from './routes/admin';
@@ -34,6 +35,8 @@ export interface AppDeps {
   /** Fans live updates out to SSE connections. */
   liveHub: LiveHub;
   limiter: RateLimiter;
+  log?: Logger;
+  metrics?: Metrics;
   /** Publishes the API's own video changes (uploads) live. */
   videoOptions?: VideoRepositoryOptions;
 }
@@ -48,8 +51,11 @@ export function createApp({
   liveHub,
   limiter,
   videoOptions,
+  log = createLogger('api', env.NODE_ENV === 'test' ? 'silent' : undefined),
+  metrics = createMetrics('api'),
 }: AppDeps) {
   const app = new Hono<AppEnv>();
+  const apiMetrics = createApiMetrics(metrics, pipeline, liveHub);
   const videos = new VideoRepository(db, videoOptions);
   const uploads = new UploadService(videos, storage, {
     maxUploadBytes: env.MAX_UPLOAD_BYTES,
@@ -57,6 +63,7 @@ export function createApp({
     beforeCreate: async (userId) => {
       const hourly = await limiter.hit(`uploads:${userId}`, env.UPLOADS_PER_HOUR, 3600);
       if (!hourly.allowed) {
+        apiMetrics.uploads.inc({outcome: 'rejected'});
         throw new TooManyRequestsError(
           `Upload limit reached (${env.UPLOADS_PER_HOUR} per hour)`,
           hourly.retryAfterSec,
@@ -74,10 +81,32 @@ export function createApp({
       await pipeline.enqueueProbe(video.id);
       await videos.addEvent(video.id, 'queue', 'Queued for probing');
       await pipeline.enqueueNotify(video.id, video.userId, 'video.uploaded');
+      apiMetrics.uploads.inc({outcome: 'completed'});
     },
   });
 
-  if (env.NODE_ENV !== 'test') app.use(logger());
+  // One structured log line and two metrics per request. The route label is
+  // the pattern (`/v1/videos/:id`), never the raw path, to keep cardinality low.
+  app.use('*', async (c, next) => {
+    const start = performance.now();
+    await next();
+    const route = c.req.routePath || 'unmatched';
+    if (route === '/metrics' || route === '/health') return;
+    const seconds = (performance.now() - start) / 1000;
+    const status = String(c.res.status);
+    apiMetrics.requests.inc({method: c.req.method, route, status});
+    apiMetrics.duration.observe({method: c.req.method, route}, seconds);
+    log.info(
+      {
+        method: c.req.method,
+        path: c.req.path,
+        route,
+        status: c.res.status,
+        ms: Math.round(seconds * 1000),
+      },
+      'request',
+    );
+  });
 
   app.use(
     '*',
@@ -92,6 +121,16 @@ export function createApp({
   app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
   app.route('/health', healthRoutes(db, storage, pipeline));
+
+  // Prometheus. Behind METRICS_TOKEN when set (it's on the public API port).
+  app.get('/metrics', async (c) => {
+    if (env.METRICS_TOKEN && c.req.header('Authorization') !== `Bearer ${env.METRICS_TOKEN}`) {
+      return c.body(null, 401);
+    }
+    return c.body(await metrics.registry.metrics(), 200, {
+      'Content-Type': metrics.registry.contentType,
+    });
+  });
 
   app.use('/v1/*', loadSession(auth, db));
   app.route('/v1/me', meRoutes());
@@ -121,7 +160,7 @@ export function createApp({
       const body: ErrorBody = {error: {code: err.code, message: err.message}};
       return c.json(body, err.status);
     }
-    console.error(err);
+    log.error({err, path: c.req.path}, 'unhandled error');
     const body: ErrorBody = {error: {code: 'internal', message: 'Something went wrong'}};
     return c.json(body, 500);
   });

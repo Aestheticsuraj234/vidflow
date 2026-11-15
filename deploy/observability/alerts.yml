@@ -1,0 +1,55 @@
+groups:
+  - name: vidflow
+    rules:
+      - alert: VidflowServiceDown
+        expr: up == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: '{{ $labels.job }} {{ $labels.instance }} is not answering /metrics'
+          runbook: 'Check the container logs and /health; a worker that cannot reach Redis reports unhealthy.'
+
+      - alert: VidflowTranscodeBacklog
+        # Videos wait longer than users will; add transcode workers (or let the autoscaler).
+        expr: sum(max by (state) (vidflow_queue_jobs{queue="transcode", state=~"waiting|prioritized"})) > 20
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $value }} transcode jobs waiting for 10 minutes'
+
+      - alert: VidflowJobsFailing
+        expr: sum by (queue) (increase(vidflow_jobs_total{outcome="failed"}[15m])) > 5
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $value | humanize }} {{ $labels.queue }} jobs failed for good in 15 minutes'
+          runbook: 'pnpm queues:replay lists dead letters with their errors.'
+
+      - alert: VidflowDeadLetters
+        expr: max(vidflow_queue_jobs{queue="dead", state="waiting"}) > 0
+        for: 30m
+        labels: {severity: info}
+        annotations:
+          summary: '{{ $value }} dead letters waiting for a look'
+
+      - alert: VidflowJobsStalling
+        # Workers dying mid-job: OOM kills, node loss, too-short locks.
+        expr: sum by (queue) (increase(vidflow_jobs_stalled_total[15m])) > 3
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.queue }} jobs keep stalling ({{ $value | humanize }} in 15 minutes)'
+
+      - alert: VidflowEncodeSlowerThanRealtime
+        expr: histogram_quantile(0.5, sum by (le) (rate(vidflow_encode_speed_ratio_bucket[30m]))) < 1
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: 'Median encode speed {{ $value | humanize }}× realtime: workers are CPU-starved'
+
+      - alert: VidflowApiErrors
+        expr: |
+          sum(rate(vidflow_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(vidflow_http_requests_total[5m])), 1e-9) > 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: '{{ $value | humanizePercentage }} of API requests fail with 5xx'
