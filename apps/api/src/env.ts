@@ -1,0 +1,27 @@
+import {z} from 'zod';
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  API_PORT: z.coerce.number().int().positive().default(4000),
+  API_URL: z.url().default('http://localhost:4000'),
+  WEB_URL: z.url().default('http://localhost:3000'),
+  DATABASE_URL: z.string().min(1).default('postgres://postgres:postgres@localhost:5432/vidflow'),
+  BETTER_AUTH_SECRET: z
+    .string()
+    .min(32, {message: 'BETTER_AUTH_SECRET must be at least 32 characters'}),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+/**
+ * Reads and validates environment variables. Fails fast with a readable
+ * message, so a missing secret never turns into a confusing runtime error.
+ */
+export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+  const result = envSchema.safeParse(source);
+  if (!result.success) {
+    const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
+    throw new Error(`Invalid environment variables:\n${issues.join('\n')}`);
+  }
+  return result.data;
+}
