@@ -6,7 +6,7 @@ import {
   type CreateUploadResponse,
   type SignPartsResponse,
   type UploadStatusResponse,
-  type VideoSummary,
+  type VideoDetail,
 } from '@vidflow/shared';
 import type {StorageProvider} from '@vidflow/storage';
 import {Hono} from 'hono';
@@ -46,8 +46,35 @@ export function videoRoutes(
     .get('/:id', async (c) => {
       const video = await videos.findForUser(c.req.param('id'), userId(c));
       if (!video) throw new NotFoundError('Video not found');
-      const posters = await videos.posterKeys([video.id]);
-      const res: VideoSummary = toVideoSummary(video, storage, posters.get(video.id));
+      const [renditions, assets, events] = await Promise.all([
+        videos.listRenditions(video.id),
+        videos.listAssets(video.id),
+        videos.listEvents(video.id),
+      ]);
+      const asset = (kind: string) => assets.find((a) => a.kind === kind)?.key;
+      const vtt = asset('sprite_vtt');
+      const res: VideoDetail = {
+        ...toVideoSummary(video, storage, asset('poster')),
+        fps: video.fps,
+        videoCodec: video.videoCodec,
+        hasAudio: video.hasAudio,
+        renditions: renditions.map((r) => ({
+          name: r.name,
+          width: r.width,
+          height: r.height,
+          videoBitrateKbps: r.videoBitrateKbps,
+          status: r.status,
+          progress: r.progress,
+          sizeBytes: r.sizeBytes,
+          encodeMs: r.encodeMs,
+        })),
+        previewsUrl: vtt ? storage.publicUrl(vtt) : null,
+        events: events.map((e) => ({
+          stage: e.stage,
+          message: e.message,
+          createdAt: e.createdAt.toISOString(),
+        })),
+      };
       return c.json(res);
     })
     .get('/:id/upload', async (c) => {

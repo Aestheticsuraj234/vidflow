@@ -102,3 +102,44 @@ export interface UploadStatusResponse {
   upload: UploadSession;
   uploadedParts: {partNumber: number; etag: string}[];
 }
+
+export interface RenditionSummary {
+  name: string;
+  width: number;
+  height: number;
+  videoBitrateKbps: number;
+  status: 'pending' | 'transcoding' | 'transcoded' | 'packaged' | 'failed';
+  progress: number;
+  sizeBytes: number | null;
+  encodeMs: number | null;
+}
+
+export interface TimelineEvent {
+  stage: string;
+  message: string;
+  createdAt: string;
+}
+
+/** `GET /v1/videos/:id`: everything the video page shows. */
+export interface VideoDetail extends VideoSummary {
+  fps: number | null;
+  videoCodec: string | null;
+  hasAudio: boolean | null;
+  renditions: RenditionSummary[];
+  /** WebVTT index into the preview sprite, for scrub previews. */
+  previewsUrl: string | null;
+  events: TimelineEvent[];
+}
+
+export interface ApiKeySummary {
+  id: string;
+  name: string;
+  /** First characters only, e.g. `vf_Ab12`. */
+  prefix: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface CreatedApiKey extends ApiKeySummary {
+  key: string;
+}

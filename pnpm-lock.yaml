@@ -41,6 +41,15 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1169.0
         version: 3.1169.0
+      '@bull-board/api':
+        specifier: 9.13.1
+        version: 9.13.1(@bull-board/ui@9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3))(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3)
+      '@bull-board/hono':
+        specifier: 9.13.1
+        version: 9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(hono@4.13.18)(typescript@6.0.3)
+      '@bull-board/ui':
+        specifier: 9.13.1
+        version: 9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3)
       '@hono/node-server':
         specifier: ^2.1.8
         version: 2.1.8(hono@4.13.18)
@@ -413,6 +422,9 @@ importers:
       geist:
         specifier: ^1.9.2
         version: 1.9.2(next@16.4.6(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+      hls.js:
+        specifier: ^1.7.4
+        version: 1.7.4
       lucide-react:
         specifier: ^1.73.0
         version: 1.73.0(@types/react@19.3.0)(react@19.3.1)
@@ -764,6 +776,26 @@ packages:
 
   '@better-fetch/fetch@1.3.3':
     resolution: {integrity: sha512-U6SlDt/GUWtK2JAxS/NhdoYTEim+EL1G5byz2TUj83KjLZBUpYzb5SmX0aXaCnbGkAjFKnV/o/0+cyXMbEcqqg==}
+
+  '@bull-board/api@9.13.1':
+    resolution: {integrity: sha512-27i+RakyykqJtZhPJk8er8z3hKn5pN32N+0lNLMDsBH0nRF9OhAWR9bjcVe7OrAq7UHmY1/3DaYtk60496CnDQ==}
+    peerDependencies:
+      '@bull-board/ui': 9.13.1
+      bull: ^4.16.5
+      bullmq: ^5.56.0 || ^6.0.0
+    peerDependenciesMeta:
+      bull:
+        optional: true
+      bullmq:
+        optional: true
+
+  '@bull-board/hono@9.13.1':
+    resolution: {integrity: sha512-untArc1L5I1Gkhp0aHwy7szX+QOUhj33fcTJUOO7NRVylWyC9twmLNkpXJSqYTNMMrJC996gM8EfbJqc1m1I6w==}
+    peerDependencies:
+      hono: ^4
+
+  '@bull-board/ui@9.13.1':
+    resolution: {integrity: sha512-J/ZC+0CtJr6HqMs2IptxjnSzmYmslHq2ZPTBp2pB8cpxxg6is9V4+/tRWti4kmk6dOYWlM6vSI0IsrrlQ8MO9Q==}
 
   '@cacheable/memory@2.2.0':
     resolution: {integrity: sha512-CTLKqLItRCEixEAewD3/j9DB3/o96gpTPD4eJ1v+DGOlxZRZncRQkGYqqnAGCscYd6RNeXfGeiuCphsPtqyIfQ==}
@@ -2521,6 +2553,11 @@ packages:
       sqlite3:
         optional: true
 
+  ejs@6.0.1:
+    resolution: {integrity: sha512-UaaM14yby8U3k02ihS1Bmj5Kz2d7CCQM1scxpgs4Mhkq8F1wR2gl3+Ts4h5Ne4Mnt7M9m4Dw7jsuMr3+xO4vZA==}
+    engines: {node: '>=0.12.18'}
+    hasBin: true
+
   enhanced-resolve@5.27.0:
     resolution: {integrity: sha512-Do6BB2xzlcc/odFg+XEYyneAx4T/WfywO71yw9ePS2tVfRsf7JVR4mUeELadIeHzixkzbG5DpluiEFPi2WGfYQ==}
     engines: {node: '>=10.13.0'}
@@ -2662,6 +2699,9 @@ packages:
   hashery@1.5.1:
     resolution: {integrity: sha512-iZyKG96/JwPz1N55vj2Ie2vXbhu440zfUfJvSwEqEbeLluk7NnapfGqa7LH0mOsnDxTF85Mx8/dyR6HfqcbmbQ==}
     engines: {node: '>=20'}
+
+  hls.js@1.7.4:
+    resolution: {integrity: sha512-3GlxGdPvT2YHvQYOt+yOzT/DEior/qJVNIylHA77kgeoBTdQQqi70GwefNEUmHQeNGyjC8U62+bruqW/Tpm+tg==}
 
   hono@4.13.18:
     resolution: {integrity: sha512-H9q/E1XizaWstJxUW881dmLxEj+t/TrGGnyxINkm4+sK0qUwsMtFdo2BWI9Vs3cIS19MU6b6iCijoUoEf4f3DA==}
@@ -2812,6 +2852,9 @@ packages:
   locate-path@6.0.0:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
+
+  lodash@4.18.1:
+    resolution: {integrity: sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==}
 
   lucide-react@1.73.0:
     resolution: {integrity: sha512-fVOzGviL9mTfHenG1PbCfIceavyGlnpYNSYr+aGZHLRymAJ7DTP6KHuqt0uBkCKAoenr1UVkwSbDIYt2xIesEQ==}
@@ -3052,6 +3095,9 @@ packages:
     resolution: {integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==}
     engines: {node: '>=4'}
 
+  redis-info@3.1.0:
+    resolution: {integrity: sha512-ER4L9Sh/vm63DkIE0bkSjxluQlioBiBgf5w1UuldaW/3vPcecdljVDisZhmnCMvsxHNiARTTDDHGg9cGwTfrKg==}
+
   resolve-from@5.0.0:
     resolution: {integrity: sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw==}
     engines: {node: '>=8'}
@@ -3243,6 +3289,14 @@ packages:
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
+
+  valibot@1.5.0:
+    resolution: {integrity: sha512-nil6AkP2TChWL43Z5uJ6GTxX01CUA+g8LWUM+N/rB9NBbkUMaUsi9PUNzlUPgoKASgmx9f7eGOYpJ04/fSa6FQ==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   vite@8.3.8:
     resolution: {integrity: sha512-LzOn3h9rG/0vhLdXrV4yJ4QFA9eEoqCl+Yx+kGJd7aB9w6nfNgVHKSYwLPZUHrz4ZGa+t+kXjV9itvcHDLQouA==}
@@ -3582,6 +3636,35 @@ snapshots:
       '@noble/hashes': 2.4.0
 
   '@better-fetch/fetch@1.3.3': {}
+
+  '@bull-board/api@9.13.1(@bull-board/ui@9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3))(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3)':
+    dependencies:
+      '@bull-board/ui': 9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3)
+      redis-info: 3.1.0
+      valibot: 1.5.0(typescript@6.0.3)
+    optionalDependencies:
+      bullmq: 6.7.6(ioredis@6.0.0)(pg@8.23.1)
+    transitivePeerDependencies:
+      - typescript
+
+  '@bull-board/hono@9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(hono@4.13.18)(typescript@6.0.3)':
+    dependencies:
+      '@bull-board/api': 9.13.1(@bull-board/ui@9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3))(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3)
+      '@bull-board/ui': 9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3)
+      ejs: 6.0.1
+      hono: 4.13.18
+    transitivePeerDependencies:
+      - bull
+      - bullmq
+      - typescript
+
+  '@bull-board/ui@9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3)':
+    dependencies:
+      '@bull-board/api': 9.13.1(@bull-board/ui@9.13.1(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3))(bullmq@6.7.6(ioredis@6.0.0)(pg@8.23.1))(typescript@6.0.3)
+    transitivePeerDependencies:
+      - bull
+      - bullmq
+      - typescript
 
   '@cacheable/memory@2.2.0':
     dependencies:
@@ -4728,6 +4811,8 @@ snapshots:
       kysely: 0.29.9
       pg: 8.23.1
 
+  ejs@6.0.1: {}
+
   enhanced-resolve@5.27.0:
     dependencies:
       graceful-fs: 4.2.12
@@ -4977,6 +5062,8 @@ snapshots:
     dependencies:
       hookified: 1.15.1
 
+  hls.js@1.7.4: {}
+
   hono@4.13.18: {}
 
   hookified@1.15.1: {}
@@ -5087,6 +5174,8 @@ snapshots:
   locate-path@6.0.0:
     dependencies:
       p-locate: 5.0.0
+
+  lodash@4.18.1: {}
 
   lucide-react@1.73.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
@@ -5306,6 +5395,10 @@ snapshots:
   readdirp@4.1.2: {}
 
   redis-errors@1.2.0: {}
+
+  redis-info@3.1.0:
+    dependencies:
+      lodash: 4.18.1
 
   resolve-from@5.0.0: {}
 
@@ -5547,6 +5640,10 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
+
+  valibot@1.5.0(typescript@6.0.3):
+    optionalDependencies:
+      typescript: 6.0.3
 
   vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15):
     dependencies:

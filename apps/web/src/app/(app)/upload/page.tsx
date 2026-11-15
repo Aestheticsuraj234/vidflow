@@ -2,6 +2,7 @@
 
 import {ACCEPTED_VIDEO_TYPES, type VideoSummary} from '@vidflow/shared';
 import {CheckCircle2, FileVideo, Pause, Play, UploadCloud, X} from 'lucide-react';
+import Link from 'next/link';
 import {useCallback, useEffect, useRef, useState} from 'react';
 
 import {AppHeader} from '@/components/app/app-header';
@@ -283,35 +284,40 @@ export default function UploadPage() {
             </h2>
             <ul className="divide-y divide-border rounded-md border border-border bg-surface">
               {recent.map((v) => (
-                <li key={v.id} className="flex items-center gap-4 px-4 py-3">
-                  <div className="aspect-video w-24 shrink-0 overflow-hidden rounded-sm bg-surface-2">
-                    {v.posterUrl && (
-                      <img src={v.posterUrl} alt="" className="size-full object-cover" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">{v.title}</p>
-                    <p className="font-mono text-xs text-muted">
-                      {v.sourceSizeBytes ? formatBytes(v.sourceSizeBytes) : '—'} ·{' '}
-                      {new Date(v.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex w-36 flex-col items-end gap-1.5">
-                    <StatusBadge status={v.status} />
-                    {(v.status === 'probing' || v.status === 'processing') && (
-                      <div className="h-1 w-full overflow-hidden rounded-full bg-surface-2">
-                        <div
-                          className="h-full bg-accent transition-[width] duration-500"
-                          style={{width: `${v.progress}%`}}
-                        />
-                      </div>
-                    )}
-                    {v.status === 'failed' && v.error && (
-                      <p className="max-w-36 truncate text-xs text-danger" title={v.error}>
-                        {v.error}
+                <li key={v.id}>
+                  <Link
+                    href={`/videos/${v.id}`}
+                    className="flex items-center gap-4 px-4 py-3 hover:bg-surface-2"
+                  >
+                    <div className="aspect-video w-24 shrink-0 overflow-hidden rounded-sm bg-surface-2">
+                      {v.posterUrl && (
+                        <img src={v.posterUrl} alt="" className="size-full object-cover" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">{v.title}</p>
+                      <p className="font-mono text-xs text-muted">
+                        {v.sourceSizeBytes ? formatBytes(v.sourceSizeBytes) : '—'} ·{' '}
+                        {new Date(v.createdAt).toLocaleString()}
                       </p>
-                    )}
-                  </div>
+                    </div>
+                    <div className="flex w-36 flex-col items-end gap-1.5">
+                      <StatusBadge status={v.status} />
+                      {(v.status === 'probing' || v.status === 'processing') && (
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-surface-2">
+                          <div
+                            className="h-full bg-accent transition-[width] duration-500"
+                            style={{width: `${v.progress}%`}}
+                          />
+                        </div>
+                      )}
+                      {v.status === 'failed' && v.error && (
+                        <p className="max-w-36 truncate text-xs text-danger" title={v.error}>
+                          {v.error}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>
