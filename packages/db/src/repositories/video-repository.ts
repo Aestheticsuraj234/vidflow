@@ -1,4 +1,4 @@
-import {and, desc, eq, inArray} from 'drizzle-orm';
+import {and, desc, eq, inArray, sql} from 'drizzle-orm';
 
 import type {Database} from '../client';
 import {assets, renditions, videoEvents, videos, type VideoStatus} from '../schema';
@@ -95,6 +95,18 @@ export class VideoRepository {
       .from(renditions)
       .where(eq(renditions.videoId, videoId))
       .orderBy(desc(renditions.height));
+  }
+
+  /**
+   * Video progress while processing: 5% after probing, then up to 85% as the
+   * renditions encode (their average), leaving the rest for packaging.
+   */
+  async refreshProgress(videoId: string): Promise<void> {
+    await this.db.execute(sql`
+      update videos set progress = greatest(progress, 5 + (
+        select coalesce(round(avg(progress) * 0.8), 0)::int from renditions where video_id = ${videoId}
+      ))
+      where id = ${videoId} and status = 'processing'`);
   }
 
   async findRendition(id: string): Promise<Rendition | undefined> {
