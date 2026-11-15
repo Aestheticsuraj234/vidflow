@@ -135,6 +135,16 @@ export class VideoRepository {
       });
   }
 
+  /** Poster keys for a page of videos, in one query. */
+  async posterKeys(videoIds: string[]): Promise<Map<string, string>> {
+    if (videoIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({videoId: assets.videoId, key: assets.key})
+      .from(assets)
+      .where(and(inArray(assets.videoId, videoIds), eq(assets.kind, 'poster')));
+    return new Map(rows.map((r) => [r.videoId, r.key]));
+  }
+
   listAssets(videoId: string): Promise<Asset[]> {
     return this.db.select().from(assets).where(eq(assets.videoId, videoId));
   }

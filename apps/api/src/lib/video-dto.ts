@@ -2,7 +2,11 @@ import type {Video} from '@vidflow/db';
 import type {VideoSummary} from '@vidflow/shared';
 import {keys, type StorageProvider} from '@vidflow/storage';
 
-export function toVideoSummary(v: Video, storage: StorageProvider): VideoSummary {
+export function toVideoSummary(
+  v: Video,
+  storage: StorageProvider,
+  posterKey?: string,
+): VideoSummary {
   return {
     id: v.id,
     title: v.title,
@@ -16,5 +20,6 @@ export function toVideoSummary(v: Video, storage: StorageProvider): VideoSummary
     createdAt: v.createdAt.toISOString(),
     readyAt: v.readyAt?.toISOString() ?? null,
     playbackUrl: v.status === 'ready' ? storage.publicUrl(keys.master(v.id)) : null,
+    posterUrl: posterKey ? storage.publicUrl(posterKey) : null,
   };
 }

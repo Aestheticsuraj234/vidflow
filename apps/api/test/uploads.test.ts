@@ -7,6 +7,7 @@ import type {
 } from '@vidflow/shared';
 import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
+import {VideoRepository} from '@vidflow/db';
 import {jobIds} from '@vidflow/queues';
 
 import type {ErrorBody} from '../src/lib/errors';
@@ -143,6 +144,28 @@ describe('direct uploads', () => {
       headers,
     });
     expect(((await res.json()) as VideoSummary).status).toBe('canceled');
+  });
+
+  it('includes the poster once thumbnails exist', async () => {
+    const {json} = await create(100);
+    const repo = new VideoRepository(t.db);
+    await repo.upsertAsset({
+      videoId: json.video.id,
+      kind: 'poster',
+      key: `public/videos/${json.video.id}/poster.jpg`,
+      contentType: 'image/jpeg',
+    });
+    const one = (await (
+      await t.app.request(`/v1/videos/${json.video.id}`, {headers})
+    ).json()) as VideoSummary;
+    expect(one.posterUrl).toBe(
+      `http://localhost:9000/vidflow/public/videos/${json.video.id}/poster.jpg`,
+    );
+    expect(one.playbackUrl).toBeNull();
+    const list = (await (await t.app.request('/v1/videos', {headers})).json()) as {
+      videos: VideoSummary[];
+    };
+    expect(list.videos.find((v) => v.id === json.video.id)?.posterUrl).toBe(one.posterUrl);
   });
 
   it("hides other users' videos", async () => {
