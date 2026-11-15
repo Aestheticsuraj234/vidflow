@@ -22,7 +22,10 @@
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.18",
     "pg": "^8.23.1",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@vidflow/queues": "workspace:*",
+    "bullmq": "^6.7.6",
+    "ioredis": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

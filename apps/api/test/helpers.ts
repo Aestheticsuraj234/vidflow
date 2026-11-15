@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 
 import {createDb} from '@vidflow/db';
+import {Pipeline, QUEUE_NAMES} from '@vidflow/queues';
 import {S3StorageProvider} from '@vidflow/storage';
 
 import {createApp, type AppDeps} from '../src/app';
@@ -24,13 +25,28 @@ export const storageConfig = {
   publicBaseUrl: 'http://localhost:9000/vidflow',
 };
 
+/** Queues under a prefix of their own, so tests never touch real jobs. */
+export function testPipeline(redisUrl = env.REDIS_URL) {
+  return new Pipeline({
+    redisUrl,
+    prefix: `vidflow-test-api-${process.pid}`,
+    onError: () => undefined,
+  });
+}
+
 /** A full app on the real database and storage, plus a teardown. */
 export function makeTestApp(overrides: Partial<AppDeps> = {}) {
   const {db, pool} = createDb(env.DATABASE_URL);
   const auth = createAuth(env, db);
   const storage = new S3StorageProvider(storageConfig);
-  const app = createApp({env, db, auth, storage, ...overrides});
-  return {app, db, storage, close: () => pool.end()};
+  const pipeline = testPipeline();
+  const app = createApp({env, db, auth, storage, pipeline, ...overrides});
+  const close = async () => {
+    for (const name of QUEUE_NAMES) await pipeline.queue(name).obliterate({force: true});
+    await pipeline.close();
+    await pool.end();
+  };
+  return {app, db, storage, pipeline, close};
 }
 
 /** Signs up a fresh user and returns headers that carry their session. */
