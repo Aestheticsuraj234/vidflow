@@ -78,6 +78,8 @@ export interface VideoSummary {
   readyAt: string | null;
   /** HLS master playlist, once the video is ready. */
   playbackUrl: string | null;
+  /** Poster image, once thumbnails are done (they run alongside encoding). */
+  posterUrl: string | null;
 }
 
 export interface UploadSession {

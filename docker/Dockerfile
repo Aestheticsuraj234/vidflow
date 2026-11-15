@@ -5,6 +5,7 @@
 #   docker build -f docker/Dockerfile --target probe-worker     -t vidflow-probe-worker .
 #   docker build -f docker/Dockerfile --target transcode-worker -t vidflow-transcode-worker .
 #   docker build -f docker/Dockerfile --target package-worker   -t vidflow-package-worker .
+#   docker build -f docker/Dockerfile --target thumbnail-worker -t vidflow-thumbnail-worker .
 #
 # Optional: --build-arg BASE_REGISTRY=public.ecr.aws/docker/library (Docker Hub
 # rate limits) and --secret id=extra_ca,src=ca.crt (TLS-intercepting proxy).
@@ -27,7 +28,7 @@ RUN pnpm turbo run build --filter='./apps/*' --filter='!@vidflow/web'
 RUN --mount=type=secret,id=extra_ca,required=false \
     --mount=type=cache,id=pnpm,target=/pnpm/store \
     NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca sh -c '\
-      for app in api probe-worker transcode-worker package-worker; do \
+      for app in api probe-worker transcode-worker package-worker thumbnail-worker; do \
         pnpm --filter @vidflow/$app deploy --prod --legacy /out/$app || exit 1; \
       done'
 
@@ -65,5 +66,12 @@ FROM media-runtime AS package-worker
 COPY --from=build /out/package-worker ./
 RUN mkdir -p /tmp/vidflow && chown node /tmp/vidflow
 ENV PACKAGE_TMP_DIR=/tmp/vidflow
+USER node
+CMD ["node", "dist/index.js"]
+
+FROM media-runtime AS thumbnail-worker
+COPY --from=build /out/thumbnail-worker ./
+RUN mkdir -p /tmp/vidflow && chown node /tmp/vidflow
+ENV THUMBNAIL_TMP_DIR=/tmp/vidflow
 USER node
 CMD ["node", "dist/index.js"]

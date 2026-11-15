@@ -1,0 +1,36 @@
+{
+  "name": "@vidflow/thumbnail-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsup",
+    "start": "node --env-file-if-exists=../../.env dist/index.js",
+    "lint": "eslint src test",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1169.0",
+    "@aws-sdk/s3-request-presigner": "^3.1169.0",
+    "@vidflow/db": "workspace:*",
+    "@vidflow/media": "workspace:*",
+    "@vidflow/queues": "workspace:*",
+    "@vidflow/storage": "workspace:*",
+    "bullmq": "^6.7.6",
+    "drizzle-orm": "^0.45.4",
+    "ioredis": "^6.0.0",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@vidflow/tsconfig": "workspace:*",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "tsup": "^8.5.0",
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.0",
+    "@vidflow/test-utils": "workspace:*"
+  }
+}

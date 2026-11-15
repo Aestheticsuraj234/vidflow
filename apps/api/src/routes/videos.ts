@@ -34,7 +34,8 @@ export function videoRoutes(
     .use(requireUser)
     .get('/', async (c) => {
       const rows = await videos.listByUser(userId(c));
-      return c.json({videos: rows.map((v) => toVideoSummary(v, storage))});
+      const posters = await videos.posterKeys(rows.map((v) => v.id));
+      return c.json({videos: rows.map((v) => toVideoSummary(v, storage, posters.get(v.id)))});
     })
     .post('/', async (c) => {
       const body = await parseBody(c.req.raw, createUploadSchema);
@@ -45,7 +46,8 @@ export function videoRoutes(
     .get('/:id', async (c) => {
       const video = await videos.findForUser(c.req.param('id'), userId(c));
       if (!video) throw new NotFoundError('Video not found');
-      const res: VideoSummary = toVideoSummary(video, storage);
+      const posters = await videos.posterKeys([video.id]);
+      const res: VideoSummary = toVideoSummary(video, storage, posters.get(video.id));
       return c.json(res);
     })
     .get('/:id/upload', async (c) => {
