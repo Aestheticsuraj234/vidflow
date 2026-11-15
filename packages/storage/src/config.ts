@@ -16,6 +16,8 @@ const storageEnvSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   S3_PUBLIC_BASE_URL: z.url(),
+  /** Browser-facing endpoint for presigned uploads (self-hosted storage only). */
+  S3_PRESIGN_ENDPOINT: optional(z.url()),
 });
 
 /** Reads S3_* variables (shared by the API and every worker). */
@@ -34,6 +36,7 @@ export function storageConfigFromEnv(source: NodeJS.ProcessEnv = process.env): S
     secretAccessKey: e.S3_SECRET_ACCESS_KEY,
     forcePathStyle: e.S3_FORCE_PATH_STYLE,
     publicBaseUrl: e.S3_PUBLIC_BASE_URL,
+    presignEndpoint: e.S3_PRESIGN_ENDPOINT,
   };
 }
 

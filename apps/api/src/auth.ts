@@ -33,6 +33,9 @@ export function createAuth(env: Env, db: Database) {
     advanced: {
       // Secure cookies need HTTPS, which local development does not have.
       useSecureCookies: env.NODE_ENV === 'production',
+      ...(env.COOKIE_DOMAIN
+        ? {crossSubDomainCookies: {enabled: true, domain: env.COOKIE_DOMAIN}}
+        : {}),
     },
   });
 }

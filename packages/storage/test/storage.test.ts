@@ -97,6 +97,24 @@ describe('S3StorageProvider', () => {
     expect((await storage.head(key))?.sizeBytes).toBe(part.length + 4);
   });
 
+  it('signs browser uploads for the public endpoint when one is set', async () => {
+    const split = new S3StorageProvider({
+      endpoint: 'http://storage:9000',
+      presignEndpoint: 'https://media.example.com',
+      region: 'us-east-1',
+      bucket: 'b',
+      accessKeyId: 'k',
+      secretAccessKey: 's',
+      forcePathStyle: true,
+      publicBaseUrl: 'https://media.example.com/b',
+    });
+    expect(new URL(await split.presignUploadPart('sources/x/original.mp4', 'u1', 1)).host).toBe(
+      'media.example.com',
+    );
+    // Workers keep using the internal endpoint.
+    expect(new URL(await split.presignGet('sources/x/original.mp4')).host).toBe('storage:9000');
+  });
+
   it('aborts a multipart upload', async () => {
     const key = `sources/${videoId}/aborted.mp4`;
     const uploadId = await storage.createMultipartUpload(key, 'video/mp4');
