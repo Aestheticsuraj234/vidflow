@@ -9,9 +9,9 @@ import {authClient} from '@/lib/auth-client';
 
 const FEATURES = [
   {icon: Upload, title: 'Upload', text: 'Resumable uploads straight to storage.', href: '/upload'},
-  {icon: Film, title: 'Library', text: 'Your videos with an adaptive player.', chapter: 11},
+  {icon: Film, title: 'Library', text: 'Your videos with an adaptive player.', href: '/library'},
   {icon: Webhook, title: 'Webhooks', text: 'Get told when a video is ready.', href: '/webhooks'},
-  {icon: KeyRound, title: 'API keys', text: 'Upload from your own app.', chapter: 11},
+  {icon: KeyRound, title: 'API keys', text: 'Upload from your own app.', href: '/api-keys'},
 ];
 
 export default function DashboardPage() {
@@ -29,25 +29,16 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {FEATURES.map(({icon: Icon, title, text, href, chapter}) => {
-            const body = (
+          {FEATURES.map(({icon: Icon, title, text, href}) => (
+            <Link key={title} href={href}>
               <Card className="flex h-full flex-col gap-2 transition-colors hover:border-accent/50">
                 <Icon className="size-5 text-accent" aria-hidden />
                 <h2 className="font-medium">{title}</h2>
                 <p className="text-sm text-muted">{text}</p>
-                <span className="mt-auto font-mono text-xs text-muted">
-                  {href ? 'open →' : `chapter ${chapter}`}
-                </span>
+                <span className="mt-auto font-mono text-xs text-muted">open →</span>
               </Card>
-            );
-            return href ? (
-              <Link key={title} href={href}>
-                {body}
-              </Link>
-            ) : (
-              <div key={title}>{body}</div>
-            );
-          })}
+            </Link>
+          ))}
         </div>
       </main>
     </div>

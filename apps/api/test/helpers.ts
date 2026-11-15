@@ -8,11 +8,15 @@ import {createApp, type AppDeps} from '../src/app';
 import {createAuth} from '../src/auth';
 import {loadEnv} from '../src/env';
 
+/** Unique per run, so sign-up never collides with a previous run. */
+export const ADMIN_EMAIL = `admin-${randomUUID()}@vidflow.test`;
+
 export const env = loadEnv({
   ...process.env,
   NODE_ENV: 'test',
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? 'test-secret-test-secret-test-secret-12',
   MAX_UPLOAD_BYTES: String(200 * 1024 * 1024),
+  ADMIN_EMAILS: ADMIN_EMAIL,
 });
 
 export const storageConfig = {
@@ -60,13 +64,16 @@ export function makeTestApp(overrides: Partial<AppDeps> = {}) {
 }
 
 /** Signs up a fresh user and returns headers that carry their session. */
-export async function signUp(app: ReturnType<typeof createApp>): Promise<Record<string, string>> {
+export async function signUp(
+  app: ReturnType<typeof createApp>,
+  email = `u-${randomUUID()}@test.dev`,
+): Promise<Record<string, string>> {
   const res = await app.request('/api/auth/sign-up/email', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', Origin: env.WEB_URL},
     body: JSON.stringify({
       name: 'Uploader',
-      email: `u-${randomUUID()}@test.dev`,
+      email,
       password: 'password123',
     }),
   });

@@ -15,6 +15,11 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(10 * 1024 ** 3),
+  /** Comma-separated emails allowed into Bull Board at /admin/queues. */
+  ADMIN_EMAILS: z
+    .string()
+    .default('')
+    .transform((v) => v.split(',').filter(Boolean)),
   BETTER_AUTH_SECRET: z
     .string()
     .min(32, {message: 'BETTER_AUTH_SECRET must be at least 32 characters'}),

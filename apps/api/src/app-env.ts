@@ -5,5 +5,7 @@ export interface AppEnv {
   Variables: {
     user: SessionData['user'] | null;
     session: SessionData['session'] | null;
+    /** Set when the request authenticated with an API key. */
+    apiKeyId: string | null;
   };
 }

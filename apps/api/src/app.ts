@@ -1,4 +1,5 @@
 import {
+  ApiKeyRepository,
   VideoRepository,
   WebhookRepository,
   type Database,
@@ -15,6 +16,8 @@ import type {Auth} from './auth';
 import type {Env} from './env';
 import {AppError, type ErrorBody} from './lib/errors';
 import {loadSession} from './middleware/session';
+import {ADMIN_BASE_PATH, adminRoutes} from './routes/admin';
+import {apiKeyRoutes} from './routes/api-keys';
 import {healthRoutes} from './routes/health';
 import {liveRoutes} from './routes/live';
 import {meRoutes} from './routes/me';
@@ -64,10 +67,14 @@ export function createApp({env, db, auth, storage, pipeline, liveHub, videoOptio
 
   app.route('/health', healthRoutes(db, storage, pipeline));
 
-  app.use('/v1/*', loadSession(auth));
+  app.use('/v1/*', loadSession(auth, db));
   app.route('/v1/me', meRoutes());
   app.route('/v1/videos', videoRoutes(videos, uploads, storage));
   app.route('/v1/live', liveRoutes(liveHub));
+  app.route('/v1/api-keys', apiKeyRoutes(new ApiKeyRepository(db)));
+  app.use(`${ADMIN_BASE_PATH}/*`, loadSession(auth, db));
+  app.use(ADMIN_BASE_PATH, loadSession(auth, db));
+  app.route(ADMIN_BASE_PATH, adminRoutes(pipeline, env.ADMIN_EMAILS));
   app.route(
     '/v1/webhooks',
     webhookRoutes(new WebhookRepository(db), pipeline, {

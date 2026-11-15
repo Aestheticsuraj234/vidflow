@@ -12,7 +12,7 @@ import {Hono} from 'hono';
 import type {AppEnv} from '../app-env';
 import {NotFoundError, UnauthorizedError, ValidationError} from '../lib/errors';
 import {parseBody} from '../lib/validate';
-import {requireUser} from '../middleware/session';
+import {requireSession} from '../middleware/session';
 
 const toSummary = (w: Webhook): WebhookSummary => ({
   id: w.id,
@@ -58,7 +58,7 @@ export function webhookRoutes(
   };
 
   return new Hono<AppEnv>()
-    .use(requireUser)
+    .use(requireSession)
     .get('/', async (c) => c.json({webhooks: (await webhooks.listByUser(user(c))).map(toSummary)}))
     .post('/', async (c) => {
       const body = await parseBody(c.req.raw, createWebhookSchema);
