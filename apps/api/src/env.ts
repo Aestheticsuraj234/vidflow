@@ -6,6 +6,12 @@ const envSchema = z.object({
   API_URL: z.url().default('http://localhost:4000'),
   WEB_URL: z.url().default('http://localhost:3000'),
   DATABASE_URL: z.string().min(1).default('postgres://postgres:postgres@localhost:5432/vidflow'),
+  /** Largest upload accepted, in bytes. Default 10 GiB. */
+  MAX_UPLOAD_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10 * 1024 ** 3),
   BETTER_AUTH_SECRET: z
     .string()
     .min(32, {message: 'BETTER_AUTH_SECRET must be at least 32 characters'}),

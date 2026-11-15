@@ -31,3 +31,21 @@ export class NotFoundError extends AppError {
 export interface ErrorBody {
   error: {code: string; message: string};
 }
+
+export class ValidationError extends AppError {
+  constructor(message: string) {
+    super(400, 'validation_failed', message);
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super(409, 'conflict', message);
+  }
+}
+
+export class PayloadTooLargeError extends AppError {
+  constructor(message: string) {
+    super(413, 'payload_too_large', message);
+  }
+}
