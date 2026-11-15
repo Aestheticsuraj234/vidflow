@@ -26,8 +26,11 @@ const worker = createWorker(
     ),
   {redisUrl: env.REDIS_URL, prefix: env.QUEUE_PREFIX, concurrency: env.PROBE_CONCURRENCY},
 );
-onFinalFailure(worker, (job, err) =>
-  rt.failVideo(job.data.videoId, `Probe failed: ${err.message}`),
+onFinalFailure(
+  worker,
+  (job, err) => rt.failVideo(job.data.videoId, `Probe failed: ${err.message}`),
+  undefined,
+  rt.pipeline,
 );
 
 console.log(`probe-worker started (concurrency ${env.PROBE_CONCURRENCY})`);

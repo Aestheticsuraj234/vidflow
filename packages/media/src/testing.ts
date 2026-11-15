@@ -11,6 +11,8 @@ const recipes: Record<string, string> = {
   'landscape.mp4': `-f lavfi -i testsrc2=size=1280x720:rate=30 -f lavfi -i sine=frequency=440 -t 3 ${x264} -c:a aac -shortest`,
   'silent-small.mp4': `-f lavfi -i testsrc2=size=320x180:rate=25 -t 2 ${x264}`,
   'portrait.mov': `-f lavfi -i testsrc2=size=1080x1920:rate=30 -f lavfi -i sine=frequency=220 -t 2 ${x264} -c:a aac -shortest`,
+  // Long enough to kill a worker mid-encode (chaos test).
+  'long.mp4': `-f lavfi -i testsrc2=size=1280x720:rate=30 -f lavfi -i sine=frequency=330 -t 40 ${x264} -c:a aac -shortest`,
   'audio-only.m4a': '-f lavfi -i sine=frequency=440 -t 2 -c:a aac',
 };
 

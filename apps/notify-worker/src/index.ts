@@ -3,6 +3,7 @@ import {createWorker, onFinalFailure, Pipeline, shutdownOnSignal} from '@vidflow
 import {createStorageFromEnv} from '@vidflow/storage';
 
 import {loadEnv} from './env';
+import {sweepStaleUploads} from './maintenance';
 import {deliver, fanOut, type NotifyDeps} from './notify';
 
 const env = loadEnv();
@@ -29,22 +30,47 @@ const deliverWorker = createWorker(
   (data, job) => deliver(deps, data, job.attemptsMade + 1),
   options,
 );
+// Housekeeping: light work, so it lives in this light worker. A job scheduler
+// keeps exactly one schedule however many worker replicas run.
+const maintenanceWorker = createWorker(
+  'maintenance',
+  async ({task}) => {
+    if (task === 'stale-uploads') return {changed: await sweepStaleUploads(deps)};
+    return {changed: 0};
+  },
+  {...options, concurrency: 1},
+);
+await pipeline
+  .queue('maintenance')
+  .upsertJobScheduler(
+    'stale-uploads',
+    {every: 15 * 60_000},
+    {name: 'stale-uploads', data: {task: 'stale-uploads'}},
+  );
+
+onFinalFailure(notifyWorker, async () => undefined, undefined, pipeline);
+
 // Out of retries: the log already holds the last error; mark it failed.
-onFinalFailure(deliverWorker, async (job, err) => {
-  const found = await webhooks.findDelivery(job.data.deliveryId);
-  if (found && found.delivery.status !== 'delivered') {
-    await webhooks.recordAttempt(job.data.deliveryId, {
-      status: 'failed',
-      attempts: job.attemptsMade,
-      lastStatusCode: found.delivery.lastStatusCode,
-      lastError: found.delivery.lastError ?? err.message,
-    });
-  }
-});
+onFinalFailure(
+  deliverWorker,
+  async (job, err) => {
+    const found = await webhooks.findDelivery(job.data.deliveryId);
+    if (found && found.delivery.status !== 'delivered') {
+      await webhooks.recordAttempt(job.data.deliveryId, {
+        status: 'failed',
+        attempts: job.attemptsMade,
+        lastStatusCode: found.delivery.lastStatusCode,
+        lastError: found.delivery.lastError ?? err.message,
+      });
+    }
+  },
+  undefined,
+  pipeline,
+);
 
 if (env.WEBHOOK_ALLOW_PRIVATE) console.warn('WEBHOOK_ALLOW_PRIVATE is on: development only');
 console.log(`notify-worker started (concurrency ${env.NOTIFY_CONCURRENCY})`);
-shutdownOnSignal([notifyWorker, deliverWorker], async () => {
+shutdownOnSignal([notifyWorker, deliverWorker, maintenanceWorker], async () => {
   await pipeline.close();
   await pool.end();
 });

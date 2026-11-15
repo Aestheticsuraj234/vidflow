@@ -22,9 +22,14 @@ const worker = createWorker(
 );
 
 // Thumbnails are cosmetic: note the failure on the timeline, keep the video.
-onFinalFailure(worker, async (job, err) => {
-  await rt.videos.addEvent(job.data.videoId, 'thumbnail', `Thumbnails failed: ${err.message}`);
-});
+onFinalFailure(
+  worker,
+  async (job, err) => {
+    await rt.videos.addEvent(job.data.videoId, 'thumbnail', `Thumbnails failed: ${err.message}`);
+  },
+  undefined,
+  rt.pipeline,
+);
 
 console.log(`thumbnail-worker started (concurrency ${env.THUMBNAIL_CONCURRENCY})`);
 shutdownOnSignal([worker], rt.close);

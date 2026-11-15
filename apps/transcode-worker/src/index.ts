@@ -35,17 +35,24 @@ const worker = createWorker(
     concurrency: env.TRANSCODE_CONCURRENCY,
     // Encodes are long and CPU-bound: renew the lock less eagerly and give a
     // busy event loop more slack before BullMQ calls the job stalled.
-    lockDuration: 60_000,
-    stalledInterval: 60_000,
+    lockDuration: env.TRANSCODE_LOCK_MS,
+    stalledInterval: env.TRANSCODE_LOCK_MS,
+    // A job that stalls twice (it keeps killing its worker, e.g. OOM) fails.
+    maxStalledCount: 2,
   },
 );
-onFinalFailure(worker, async (job, err) => {
-  await rt.videos.updateRendition(job.data.renditionId, {status: 'failed'});
-  await rt.failVideo(
-    job.data.videoId,
-    `Transcode ${job.data.rendition.name} failed: ${err.message}`,
-  );
-});
+onFinalFailure(
+  worker,
+  async (job, err) => {
+    await rt.videos.updateRendition(job.data.renditionId, {status: 'failed'});
+    await rt.failVideo(
+      job.data.videoId,
+      `Transcode ${job.data.rendition.name} failed: ${err.message}`,
+    );
+  },
+  undefined,
+  rt.pipeline,
+);
 
 console.log(
   `transcode-worker started (concurrency ${env.TRANSCODE_CONCURRENCY}, preset ${env.FFMPEG_PRESET})`,

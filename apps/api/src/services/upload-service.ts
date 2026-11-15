@@ -16,6 +16,8 @@ export interface UploadServiceOptions {
   partUrlTtlSeconds?: number;
   /** Runs after an upload completes; Chapter 5 starts the pipeline here. */
   onUploaded?: (video: Video) => Promise<void>;
+  /** Runs before a video is created; throw to refuse (rate limits). */
+  beforeCreate?: (userId: string) => Promise<void>;
 }
 
 /**
@@ -38,6 +40,7 @@ export class UploadService {
         `Files can be at most ${Math.floor(this.options.maxUploadBytes / 1024 ** 2)} MiB`,
       );
     }
+    await this.options.beforeCreate?.(userId);
     const created = await this.videos.create({
       userId,
       title: req.title,

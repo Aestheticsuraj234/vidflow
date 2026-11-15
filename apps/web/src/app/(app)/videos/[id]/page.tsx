@@ -1,8 +1,8 @@
 'use client';
 
 import type {VideoDetail} from '@vidflow/shared';
-import {Check, Copy, Loader2} from 'lucide-react';
-import {useParams} from 'next/navigation';
+import {Ban, Check, Copy, Loader2, Trash2} from 'lucide-react';
+import {useParams, useRouter} from 'next/navigation';
 import {useCallback, useEffect, useState} from 'react';
 
 import {AppHeader} from '@/components/app/app-header';
@@ -22,6 +22,18 @@ export default function VideoPage() {
   const [video, setVideo] = useState<VideoDetail | null>(null);
   const [missing, setMissing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const router = useRouter();
+
+  async function cancel() {
+    await api(`/v1/videos/${id}/cancel`, {method: 'POST'}).catch(() => undefined);
+    await load();
+  }
+
+  async function remove() {
+    await api(`/v1/videos/${id}`, {method: 'DELETE'});
+    router.replace('/library');
+  }
 
   const load = useCallback(async () => {
     try {
@@ -127,7 +139,27 @@ export default function VideoPage() {
                 Uploaded {new Date(video.createdAt).toLocaleString()}
               </p>
             </div>
-            <StatusBadge status={video.status} />
+            <div className="flex shrink-0 items-center gap-2">
+              <StatusBadge status={video.status} />
+              {busy && (
+                <Button variant="secondary" size="sm" onClick={() => void cancel()}>
+                  <Ban className="size-4" /> Cancel
+                </Button>
+              )}
+              {confirmDelete ? (
+                <Button
+                  size="sm"
+                  className="bg-danger text-white hover:bg-danger/90"
+                  onClick={() => void remove()}
+                >
+                  <Trash2 className="size-4" /> Delete for good
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 className="size-4" /> Delete
+                </Button>
+              )}
+            </div>
           </div>
 
           {video.playbackUrl && (

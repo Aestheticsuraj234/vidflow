@@ -8,15 +8,17 @@ import {
   type UploadStatusResponse,
   type VideoDetail,
 } from '@vidflow/shared';
+import type {Pipeline} from '@vidflow/queues';
 import type {StorageProvider} from '@vidflow/storage';
 import {Hono} from 'hono';
 
 import type {AppEnv} from '../app-env';
-import {NotFoundError, UnauthorizedError} from '../lib/errors';
+import {ConflictError, NotFoundError, UnauthorizedError} from '../lib/errors';
 import {parseBody} from '../lib/validate';
 import {toVideoSummary} from '../lib/video-dto';
 import {requireUser} from '../middleware/session';
 import type {UploadService} from '../services/upload-service';
+import {cancelVideo, deleteVideo} from '../services/video-lifecycle';
 
 function userId(c: {get(key: 'user'): AppEnv['Variables']['user']}): string {
   const user = c.get('user');
@@ -29,7 +31,14 @@ export function videoRoutes(
   videos: VideoRepository,
   uploads: UploadService,
   storage: StorageProvider,
+  pipeline: Pipeline,
 ) {
+  const lifecycle = {videos, storage, pipeline};
+  const own = async (id: string, userId: string) => {
+    const video = await videos.findForUser(id, userId);
+    if (!video) throw new NotFoundError('Video not found');
+    return video;
+  };
   return new Hono<AppEnv>()
     .use(requireUser)
     .get('/', async (c) => {
@@ -94,6 +103,17 @@ export function videoRoutes(
       const body = await parseBody(c.req.raw, completeUploadSchema);
       const video = await uploads.complete(userId(c), c.req.param('id'), body);
       return c.json(toVideoSummary(video, storage));
+    })
+    .post('/:id/cancel', async (c) => {
+      const video = await own(c.req.param('id'), userId(c));
+      const canceled = await cancelVideo(lifecycle, video);
+      if (!canceled) throw new ConflictError(`Video is already ${video.status}`);
+      return c.json(toVideoSummary(canceled, storage));
+    })
+    .delete('/:id', async (c) => {
+      const video = await own(c.req.param('id'), userId(c));
+      await deleteVideo(lifecycle, video);
+      return c.body(null, 204);
     })
     .delete('/:id/upload', async (c) => {
       const video = await uploads.abort(userId(c), c.req.param('id'));

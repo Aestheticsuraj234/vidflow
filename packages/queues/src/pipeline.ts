@@ -139,6 +139,78 @@ export class Pipeline {
     );
   }
 
+  /** Records a job that failed for good. Idempotent per original job. */
+  async deadLetter(
+    queue: QueueName,
+    job: {id?: string; name: string; data: unknown; attemptsMade: number},
+    err: Error,
+  ): Promise<void> {
+    if (queue === 'dead' || !job.id) return;
+    await this.queue('dead').add(
+      `${queue}:${job.name}`,
+      {
+        queue,
+        jobId: job.id,
+        name: job.name,
+        data: job.data,
+        failedReason: err.message,
+        attemptsMade: job.attemptsMade,
+        failedAt: new Date().toISOString(),
+      },
+      {jobId: `dead-${queue}-${job.id}`, removeOnComplete: true, removeOnFail: false},
+    );
+  }
+
+  /**
+   * Retries a dead letter: the original job if BullMQ still has it in
+   * `failed`, otherwise a fresh copy. Returns what happened.
+   */
+  async replay(deadJobId: string): Promise<'retried' | 're-added' | 'not-found'> {
+    const dead = await this.queue('dead').getJob(deadJobId);
+    if (!dead) return 'not-found';
+    const {queue, jobId, name, data} = dead.data;
+    const q = this.queue(queue as QueueName);
+    const original = await q.getJob(jobId);
+    let result: 'retried' | 're-added';
+    if (original && (await original.getState()) === 'failed') {
+      await original.retry('failed');
+      result = 'retried';
+    } else {
+      await q.add(name, data as never, {jobId: `${jobId}-replay-${Date.now()}`});
+      result = 're-added';
+    }
+    await dead.remove();
+    return result;
+  }
+
+  /**
+   * Removes every queued job for a video: probe, the transcode→package flow,
+   * thumbnails. Jobs already running notice the cancel themselves (the
+   * transcode worker checks between progress updates). Returns how many
+   * jobs were removed.
+   */
+  async cancelVideo(videoId: string, renditionNames: string[]): Promise<number> {
+    let removed = 0;
+    const tryRemove = async (queue: QueueName, id: string, opts?: {removeChildren: boolean}) => {
+      const job = await this.queue(queue).getJob(id);
+      if (!job) return;
+      const state = await job.getState();
+      if (state === 'active' || state === 'completed' || state === 'failed') return;
+      try {
+        await this.queue(queue).remove(id, opts);
+        removed++;
+      } catch {
+        // Became active (locked) in between: it will see the cancel.
+      }
+    };
+    await tryRemove('probe', jobIds.probe(videoId));
+    await tryRemove('thumbnail', jobIds.thumbnail(videoId));
+    for (const name of renditionNames)
+      await tryRemove('transcode', jobIds.transcode(videoId, name));
+    await tryRemove('package', jobIds.package(videoId), {removeChildren: true});
+    return removed;
+  }
+
   /** Waiting/active/failed counts per queue: dashboards and autoscaling. */
   async counts(): Promise<Record<QueueName, Record<string, number>>> {
     const entries = await Promise.all(

@@ -10,7 +10,8 @@
     "lint": "eslint src test",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "queues:stats": "tsx --env-file-if-exists=../../.env src/stats-cli.ts"
+    "queues:stats": "tsx --env-file-if-exists=../../.env src/stats-cli.ts",
+    "queues:replay": "tsx --env-file-if-exists=../../.env src/replay-cli.ts"
   },
   "dependencies": {
     "bullmq": "^6.7.6",

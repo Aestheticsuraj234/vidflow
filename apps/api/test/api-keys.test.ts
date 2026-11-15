@@ -97,7 +97,9 @@ describe('Bull Board', () => {
     expect(api.status).toBe(200);
     const body = (await api.json()) as {queues: {name: string}[]};
     expect(body.queues.map((q) => q.name).sort()).toEqual([
+      'dead',
       'deliver',
+      'maintenance',
       'notify',
       'package',
       'probe',

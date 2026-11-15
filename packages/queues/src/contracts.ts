@@ -12,6 +12,13 @@ export const QUEUES = {
   notify: 'notify',
   /** One webhook delivery (Chapter 10): its own retries, per endpoint. */
   deliver: 'deliver',
+  /** Periodic housekeeping (Chapter 12). */
+  maintenance: 'maintenance',
+  /**
+   * Dead letters: a copy of every job that failed for good, with its error.
+   * Nothing consumes it; inspect in Bull Board, replay with `pnpm queues:replay`.
+   */
+  dead: 'dead',
 } as const;
 export type QueueName = keyof typeof QUEUES;
 export const QUEUE_NAMES = Object.keys(QUEUES) as QueueName[];
@@ -51,6 +58,16 @@ export const jobSchemas = {
     event: z.enum(WEBHOOK_EVENTS),
   }),
   deliver: z.object({deliveryId: z.uuid()}),
+  maintenance: z.object({task: z.enum(['stale-uploads'])}),
+  dead: z.object({
+    queue: z.string(),
+    jobId: z.string(),
+    name: z.string(),
+    data: z.unknown(),
+    failedReason: z.string(),
+    attemptsMade: z.number(),
+    failedAt: z.string(),
+  }),
 } satisfies Record<QueueName, z.ZodType>;
 
 export type JobData<Q extends QueueName> = z.infer<(typeof jobSchemas)[Q]>;
@@ -94,6 +111,8 @@ export interface JobResults {
   thumbnail: ThumbnailResult;
   notify: NotifyResult;
   deliver: DeliverResult;
+  maintenance: {changed: number};
+  dead: never;
 }
 
 /**
