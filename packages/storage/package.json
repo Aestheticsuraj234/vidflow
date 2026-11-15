@@ -1,0 +1,26 @@
+{
+  "name": "@vidflow/storage",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "storage:setup": "tsx --env-file-if-exists=../../.env src/setup-cli.ts",
+    "lint": "eslint src test",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1169.0",
+    "@aws-sdk/s3-request-presigner": "^3.1169.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@vidflow/tsconfig": "workspace:*",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 
 import {createDb} from '@vidflow/db';
+import {S3StorageProvider} from '@vidflow/storage';
 import type {HealthResponse, PublicUser} from '@vidflow/shared';
 import {afterAll, describe, expect, it} from 'vitest';
 
@@ -16,7 +17,17 @@ const env = loadEnv({
 });
 const {db, pool} = createDb(env.DATABASE_URL);
 const auth = createAuth(env, db);
-const app = createApp({env, db, auth});
+const storageConfig = {
+  endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:9000',
+  region: 'us-east-1',
+  bucket: 'vidflow',
+  accessKeyId: process.env.S3_ACCESS_KEY_ID ?? 'vidflow',
+  secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? 'vidflow-secret-key',
+  forcePathStyle: true,
+  publicBaseUrl: 'http://localhost:9000/vidflow',
+};
+const storage = new S3StorageProvider(storageConfig);
+const app = createApp({env, db, auth, storage});
 
 const origin = {Origin: env.WEB_URL};
 
@@ -35,17 +46,25 @@ describe('GET /health', () => {
     const res = await app.request('/health');
     expect(res.status).toBe(200);
     const body = (await res.json()) as HealthResponse;
-    expect(body).toMatchObject({status: 'ok', checks: {database: 'ok'}});
+    expect(body).toMatchObject({status: 'ok', checks: {database: 'ok', storage: 'ok'}});
   });
 
   it('returns 503 when the database is unreachable', async () => {
     const dead = createDb('postgres://postgres@127.0.0.1:1/none');
-    const deadApp = createApp({env, db: dead.db, auth});
+    const deadApp = createApp({env, db: dead.db, auth, storage});
     const res = await deadApp.request('/health');
     expect(res.status).toBe(503);
     const body = (await res.json()) as HealthResponse;
     expect(body).toMatchObject({status: 'degraded', checks: {database: 'down'}});
     await dead.pool.end();
+  });
+
+  it('returns 503 when storage is unreachable', async () => {
+    const deadStorage = new S3StorageProvider({...storageConfig, endpoint: 'http://127.0.0.1:1'});
+    const deadApp = createApp({env, db, auth, storage: deadStorage});
+    const res = await deadApp.request('/health');
+    expect(res.status).toBe(503);
+    expect(((await res.json()) as HealthResponse).checks.storage).toBe('down');
   });
 });
 
