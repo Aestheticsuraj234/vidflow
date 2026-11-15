@@ -19,6 +19,8 @@ export interface TranscodeDeps {
   preset: string;
   threads: number;
   timeoutMs: number;
+  /** Reports encode speed (seconds of video per second of work) for metrics. */
+  onEncoded?: (rendition: string, realtime: number) => void;
   /** How often progress is written to Redis and Postgres. */
   progressIntervalMs?: number;
 }
@@ -118,6 +120,7 @@ export async function transcodeRendition(
       encodeMs,
     });
     await videos.refreshProgress(videoId);
+    if (video.durationMs) deps.onEncoded?.(rendition.name, video.durationMs / encodeMs);
     const realtime = video.durationMs
       ? ` (${(video.durationMs / encodeMs).toFixed(1)}× realtime)`
       : '';

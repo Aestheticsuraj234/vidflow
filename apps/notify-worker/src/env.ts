@@ -9,6 +9,7 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1).default('postgres://postgres:postgres@localhost:5432/vidflow'),
   REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
   QUEUE_PREFIX: z.string().min(1).default('vidflow'),
+  METRICS_PORT: z.coerce.number().int().nonnegative().default(9469),
   NOTIFY_CONCURRENCY: z.coerce.number().int().positive().default(10),
   /** Let webhooks reach localhost and private networks. Development only. */
   WEBHOOK_ALLOW_PRIVATE: bool,

@@ -42,8 +42,8 @@ playback, Prometheus + Grafana for metrics, Caddy for HTTPS.
 | 10  | Real-time progress and webhooks             | Progress over Redis pub/sub → SSE; `notify-worker` sends HMAC-signed webhooks with backoff and a delivery log                       | ✅ Done  |
 | 11  | Player and dashboard UI                     | hls.js player with quality switcher and scrub previews, video library, upload page, per-video job timeline, Bull Board admin        | ✅ Done  |
 | 12  | Reliability: retries, cancellation, cleanup | Retries vs dead-letter queue, stalled jobs, cancel a video mid-flow, delete and storage cleanup, rate limits per user, chaos tests  | ✅ Done  |
-| 13  | Observability                               | Structured logs per service, Prometheus metrics (queue depth, encode speed, failures), alerts, Grafana dashboard                    | ⏸ Next   |
-| 14  | Deployment, autoscaling and load testing    | Image per service, production Compose + Caddy, R2 + CDN, scale transcode workers by queue depth, load test, final README            | Planned  |
+| 13  | Observability                               | Structured logs per service, Prometheus metrics (queue depth, encode speed, failures), alerts, Grafana dashboard                    | ✅ Done  |
+| 14  | Deployment, autoscaling and load testing    | Image per service, production Compose + Caddy, R2 + CDN, scale transcode workers by queue depth, load test, final README            | ⏸ Next   |
 | ★1  | Bonus: Kubernetes with KEDA                 | Helm chart, KEDA autoscaling each worker on its BullMQ queue length, scale to zero                                                  | Optional |
 | ★2  | Bonus: GPU encoding                         | NVENC transcode worker on a GPU node, routed by a `gpu` queue                                                                       | Optional |
 

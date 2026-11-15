@@ -6,6 +6,8 @@ import {packageVideo} from './package-video';
 
 const env = loadEnv();
 const rt = createRuntime({
+  service: 'package-worker',
+  metricsPort: env.METRICS_PORT,
   databaseUrl: env.DATABASE_URL,
   redisUrl: env.REDIS_URL,
   queuePrefix: env.QUEUE_PREFIX,
@@ -24,7 +26,12 @@ const worker = createWorker(
       },
       data,
     ),
-  {redisUrl: env.REDIS_URL, prefix: env.QUEUE_PREFIX, concurrency: env.PACKAGE_CONCURRENCY},
+  {
+    redisUrl: env.REDIS_URL,
+    prefix: env.QUEUE_PREFIX,
+    log: rt.log,
+    concurrency: env.PACKAGE_CONCURRENCY,
+  },
 );
 
 // Also fires when a transcode child failed for good: BullMQ fails this parent
@@ -33,9 +40,10 @@ const worker = createWorker(
 onFinalFailure(
   worker,
   (job, err) => rt.failVideo(job.data.videoId, `Packaging failed: ${err.message}`),
-  undefined,
+  rt.log,
   rt.pipeline,
 );
 
-console.log(`package-worker started (concurrency ${env.PACKAGE_CONCURRENCY})`);
-shutdownOnSignal([worker], rt.close);
+rt.instrument(worker);
+rt.log.info(`package-worker started (concurrency ${env.PACKAGE_CONCURRENCY})`);
+shutdownOnSignal([worker], rt.close, rt.log);

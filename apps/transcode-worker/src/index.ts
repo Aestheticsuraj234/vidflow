@@ -6,13 +6,15 @@ import {sweepTempDirs, transcodeRendition} from './transcode-rendition';
 
 const env = loadEnv();
 const rt = createRuntime({
+  service: 'transcode-worker',
+  metricsPort: env.METRICS_PORT,
   databaseUrl: env.DATABASE_URL,
   redisUrl: env.REDIS_URL,
   queuePrefix: env.QUEUE_PREFIX,
 });
 
 const swept = await sweepTempDirs(env.TRANSCODE_TMP_DIR);
-if (swept > 0) console.log(`removed ${swept} stale temp folder(s)`);
+if (swept > 0) rt.log.info({swept}, 'removed stale temp folders');
 
 const worker = createWorker(
   'transcode',
@@ -25,6 +27,7 @@ const worker = createWorker(
         preset: env.FFMPEG_PRESET,
         threads: env.FFMPEG_THREADS,
         timeoutMs: env.TRANSCODE_TIMEOUT_MS,
+        onEncoded: (name, realtime) => rt.metrics.encodeSpeed.observe({rendition: name}, realtime),
       },
       data,
       job,
@@ -32,6 +35,7 @@ const worker = createWorker(
   {
     redisUrl: env.REDIS_URL,
     prefix: env.QUEUE_PREFIX,
+    log: rt.log,
     concurrency: env.TRANSCODE_CONCURRENCY,
     // Encodes are long and CPU-bound: renew the lock less eagerly and give a
     // busy event loop more slack before BullMQ calls the job stalled.
@@ -50,11 +54,12 @@ onFinalFailure(
       `Transcode ${job.data.rendition.name} failed: ${err.message}`,
     );
   },
-  undefined,
+  rt.log,
   rt.pipeline,
 );
 
-console.log(
+rt.instrument(worker);
+rt.log.info(
   `transcode-worker started (concurrency ${env.TRANSCODE_CONCURRENCY}, preset ${env.FFMPEG_PRESET})`,
 );
-shutdownOnSignal([worker], rt.close);
+shutdownOnSignal([worker], rt.close, rt.log);
