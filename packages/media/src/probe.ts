@@ -8,6 +8,8 @@ const run = promisify(execFile);
 const streamSchema = z.object({
   codec_type: z.string(),
   codec_name: z.string().optional(),
+  profile: z.string().optional(),
+  level: z.number().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
   avg_frame_rate: z.string().optional(),
@@ -42,6 +44,9 @@ export interface MediaInfo {
   fps: number;
   videoCodec: string;
   videoBitrateKbps: number | null;
+  /** e.g. "High", and level ×10 (31 = 3.1). For the HLS CODECS attribute. */
+  videoProfile: string | null;
+  videoLevel: number | null;
   hasAudio: boolean;
   audioCodec: string | null;
 }
@@ -104,6 +109,8 @@ export function parseProbe(json: unknown): MediaInfo {
     fps: fps > 0 && fps < 1000 ? Math.round(fps * 1000) / 1000 : 30,
     videoCodec: video.codec_name ?? 'unknown',
     videoBitrateKbps: bitrate > 0 ? Math.round(bitrate / 1000) : null,
+    videoProfile: video.profile ?? null,
+    videoLevel: video.level && video.level > 0 ? video.level : null,
     hasAudio: Boolean(audio),
     audioCodec: audio?.codec_name ?? null,
   };

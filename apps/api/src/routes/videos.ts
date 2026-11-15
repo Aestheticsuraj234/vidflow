@@ -8,6 +8,7 @@ import {
   type UploadStatusResponse,
   type VideoSummary,
 } from '@vidflow/shared';
+import type {StorageProvider} from '@vidflow/storage';
 import {Hono} from 'hono';
 
 import type {AppEnv} from '../app-env';
@@ -24,23 +25,27 @@ function userId(c: {get(key: 'user'): AppEnv['Variables']['user']}): string {
 }
 
 /** `/v1/videos`: create videos and drive their direct-to-storage upload. */
-export function videoRoutes(videos: VideoRepository, uploads: UploadService) {
+export function videoRoutes(
+  videos: VideoRepository,
+  uploads: UploadService,
+  storage: StorageProvider,
+) {
   return new Hono<AppEnv>()
     .use(requireUser)
     .get('/', async (c) => {
       const rows = await videos.listByUser(userId(c));
-      return c.json({videos: rows.map(toVideoSummary)});
+      return c.json({videos: rows.map((v) => toVideoSummary(v, storage))});
     })
     .post('/', async (c) => {
       const body = await parseBody(c.req.raw, createUploadSchema);
       const {video, upload} = await uploads.create(userId(c), body);
-      const res: CreateUploadResponse = {video: toVideoSummary(video), upload};
+      const res: CreateUploadResponse = {video: toVideoSummary(video, storage), upload};
       return c.json(res, 201);
     })
     .get('/:id', async (c) => {
       const video = await videos.findForUser(c.req.param('id'), userId(c));
       if (!video) throw new NotFoundError('Video not found');
-      const res: VideoSummary = toVideoSummary(video);
+      const res: VideoSummary = toVideoSummary(video, storage);
       return c.json(res);
     })
     .get('/:id/upload', async (c) => {
@@ -59,10 +64,10 @@ export function videoRoutes(videos: VideoRepository, uploads: UploadService) {
     .post('/:id/upload/complete', async (c) => {
       const body = await parseBody(c.req.raw, completeUploadSchema);
       const video = await uploads.complete(userId(c), c.req.param('id'), body);
-      return c.json(toVideoSummary(video));
+      return c.json(toVideoSummary(video, storage));
     })
     .delete('/:id/upload', async (c) => {
       const video = await uploads.abort(userId(c), c.req.param('id'));
-      return c.json(toVideoSummary(video));
+      return c.json(toVideoSummary(video, storage));
     });
 }
