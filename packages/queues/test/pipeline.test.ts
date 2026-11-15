@@ -115,6 +115,15 @@ describe('Pipeline', () => {
     expect(await pipeline.queue('thumbnail').getJob(jobIds.thumbnail(p.videoId))).toBeTruthy();
   });
 
+  it('adding the same flow twice changes nothing', async () => {
+    const p = plan();
+    await pipeline.startProcessing(p);
+    await pipeline.startProcessing(p);
+    expect(await pipeline.queue('transcode').getJobCountByTypes('prioritized', 'waiting')).toBe(2);
+    expect(await pipeline.queue('package').getJobCountByTypes('waiting-children')).toBe(1);
+    expect(await pipeline.queue('thumbnail').getJobCountByTypes('prioritized', 'waiting')).toBe(1);
+  });
+
   it('fails the parent when a transcode fails for good', async () => {
     const p = plan();
     workers.push(
