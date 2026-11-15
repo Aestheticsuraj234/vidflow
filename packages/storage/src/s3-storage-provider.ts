@@ -34,27 +34,39 @@ export interface S3Config {
   forcePathStyle: boolean;
   /** Base URL that serves `public/…` keys: the bucket, a CDN, or an R2 custom domain. */
   publicBaseUrl: string;
+  /**
+   * Endpoint browsers use for presigned part uploads, when it differs from
+   * `endpoint` (self-hosted storage: services use `http://storage:9000`,
+   * browsers `https://media.example.com`). The signature covers the host, so
+   * the URL must be signed for the host the browser will call.
+   */
+  presignEndpoint?: string;
 }
 
 /** S3-compatible storage: RustFS/MinIO locally, S3 or Cloudflare R2 in production. */
 export class S3StorageProvider implements StorageProvider {
   readonly client: S3Client;
+  /** Signs browser-facing URLs; the same client unless `presignEndpoint` is set. */
+  private readonly browserClient: S3Client;
   readonly bucket: string;
   private readonly publicBaseUrl: string;
 
   constructor(config: S3Config) {
     this.bucket = config.bucket;
     this.publicBaseUrl = config.publicBaseUrl.replace(/\/+$/, '');
-    this.client = new S3Client({
-      endpoint: config.endpoint,
-      region: config.region,
-      forcePathStyle: config.forcePathStyle,
-      credentials: {accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey},
-      // The SDK's default checksums break presigned part uploads on R2,
-      // RustFS and MinIO. Only send them where the API requires them.
-      requestChecksumCalculation: 'WHEN_REQUIRED',
-      responseChecksumValidation: 'WHEN_REQUIRED',
-    });
+    const makeClient = (endpoint: string | undefined) =>
+      new S3Client({
+        endpoint,
+        region: config.region,
+        forcePathStyle: config.forcePathStyle,
+        credentials: {accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey},
+        // The SDK's default checksums break presigned part uploads on R2,
+        // RustFS and MinIO. Only send them where the API requires them.
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+        responseChecksumValidation: 'WHEN_REQUIRED',
+      });
+    this.client = makeClient(config.endpoint);
+    this.browserClient = config.presignEndpoint ? makeClient(config.presignEndpoint) : this.client;
   }
 
   async isAvailable(): Promise<boolean> {
@@ -181,7 +193,7 @@ export class S3StorageProvider implements StorageProvider {
     expiresInSeconds = 3600,
   ): Promise<string> {
     return getSignedUrl(
-      this.client,
+      this.browserClient,
       new UploadPartCommand({
         Bucket: this.bucket,
         Key: key,

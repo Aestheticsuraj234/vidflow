@@ -1,0 +1,51 @@
+# Sites: the web app, the API and (self-hosted storage only) media.
+# A plain hostname gets automatic HTTPS; prefix with http:// for HTTP only.
+{
+	email {$ACME_EMAIL:admin@example.com}
+	# Extra global options, e.g. CADDY_GLOBAL_OPTIONS=local_certs to use
+	# Caddy's own CA for a staging box or a local HTTPS test.
+	{$CADDY_GLOBAL_OPTIONS}
+}
+
+{$WEB_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+{$API_ADDRESS} {
+	encode zstd gzip
+	# Metrics and the queue admin stay on the internal network.
+	@internal path /metrics /admin/queues*
+	respond @internal 404
+	reverse_proxy api:4000 {
+		# Server-sent events: send each one as soon as it is written.
+		flush_interval -1
+	}
+}
+
+# Self-hosted storage (the "storage" profile). With Cloudflare R2 or S3, point
+# S3_PUBLIC_BASE_URL at the bucket's custom domain / CDN instead and drop this.
+{$MEDIA_ADDRESS:http://media.localhost} {
+	# Players read public files; browsers PUT presigned parts of an upload.
+	# Nothing else (listing, other prefixes, admin) is reachable from outside.
+	@public {
+		method GET HEAD OPTIONS
+		path /{$S3_BUCKET:vidflow}/public/*
+	}
+	@upload {
+		method PUT OPTIONS
+		path /{$S3_BUCKET:vidflow}/sources/*
+	}
+	handle @public {
+		reverse_proxy storage:9000
+	}
+	handle @upload {
+		request_body {
+			max_size 5GB
+		}
+		reverse_proxy storage:9000
+	}
+	handle {
+		respond 404
+	}
+}

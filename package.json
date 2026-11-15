@@ -21,7 +21,9 @@
     "db:generate": "pnpm --filter @vidflow/db db:generate",
     "queues:stats": "pnpm --filter @vidflow/queues queues:stats",
     "queues:replay": "pnpm --filter @vidflow/queues queues:replay",
-    "test:chaos": "pnpm --filter @vidflow/chaos-tests test:chaos"
+    "test:chaos": "pnpm --filter @vidflow/chaos-tests test:chaos",
+    "autoscale": "pnpm --filter @vidflow/queues autoscale",
+    "load-test": "pnpm --filter @vidflow/load-tests load-test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

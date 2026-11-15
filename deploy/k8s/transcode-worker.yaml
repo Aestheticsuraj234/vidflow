@@ -1,0 +1,57 @@
+# Transcode workers on Kubernetes, scaled by KEDA from the queue depth that
+# the API exports to Prometheus (vidflow_queue_jobs). Apply after installing
+# KEDA and Prometheus; the other services follow the same pattern.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transcode-worker
+  labels: {app: transcode-worker}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: transcode-worker}
+  template:
+    metadata:
+      labels: {app: transcode-worker}
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9465'
+    spec:
+      # Let a busy worker finish its encode before it goes away.
+      terminationGracePeriodSeconds: 600
+      containers:
+        - name: transcode-worker
+          image: ghcr.io/you/vidflow-transcode-worker:latest
+          envFrom:
+            - secretRef: {name: vidflow-env}
+          env:
+            - {name: TRANSCODE_CONCURRENCY, value: '1'}
+          resources:
+            requests: {cpu: '2', memory: 1Gi}
+            limits: {cpu: '2', memory: 2Gi}
+          livenessProbe:
+            httpGet: {path: /health, port: 9465}
+            periodSeconds: 15
+          volumeMounts:
+            - {name: scratch, mountPath: /tmp/vidflow}
+      volumes:
+        - name: scratch
+          emptyDir: {sizeLimit: 8Gi}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: transcode-worker
+spec:
+  scaleTargetRef:
+    name: transcode-worker
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  cooldownPeriod: 300 # wait 5 minutes before scaling down
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring:9090
+        # Running + waiting transcode jobs; one replica per 2 jobs.
+        query: sum(max by (state) (vidflow_queue_jobs{queue="transcode", state=~"waiting|prioritized|active"}))
+        threshold: '2'

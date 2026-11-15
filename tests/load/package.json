@@ -1,0 +1,16 @@
+{
+  "name": "@vidflow/load-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "load-test": "tsx load-test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@vidflow/shared": "workspace:*",
+    "@vidflow/tsconfig": "workspace:*",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15"
+  }
+}

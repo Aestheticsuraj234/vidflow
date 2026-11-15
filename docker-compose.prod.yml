@@ -1,0 +1,180 @@
+# Production stack on one machine (or as a template for your orchestrator).
+#
+#   cp .env.production.example .env.production      # fill it in
+#   ./scripts/build-images.sh                         # or let compose build
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#   docker compose -f docker-compose.prod.yml --env-file .env.production --profile storage up -d
+#                                                     # self-hosted RustFS instead of R2/S3
+#
+# Scale encoders: --scale transcode-worker=4, or run `pnpm autoscale` to follow
+# the queue depth. Public traffic only reaches Caddy (80/443).
+x-build: &build
+  context: .
+  dockerfile: docker/Dockerfile
+  args:
+    BASE_REGISTRY: ${BASE_REGISTRY:-docker.io/library}
+    NEXT_PUBLIC_API_URL: ${API_URL}
+
+x-env: &env
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://vidflow:${POSTGRES_PASSWORD}@postgres:5432/vidflow
+  REDIS_URL: redis://redis:6379
+  QUEUE_PREFIX: vidflow
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://storage:9000}
+  S3_PRESIGN_ENDPOINT: ${S3_PRESIGN_ENDPOINT:-}
+  S3_REGION: ${S3_REGION:-auto}
+  S3_BUCKET: ${S3_BUCKET:-vidflow}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+  S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:?set S3_PUBLIC_BASE_URL}
+  S3_PUBLIC_READ_POLICY: ${S3_PUBLIC_READ_POLICY:-false}
+
+x-worker: &worker
+  restart: unless-stopped
+  # Finish the current job on deploys (BullMQ waits for active jobs on SIGTERM).
+  stop_grace_period: 120s
+  depends_on:
+    setup: {condition: service_completed_successfully}
+    redis: {condition: service_healthy}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vidflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: vidflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vidflow']
+      interval: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF: queued jobs survive a Redis restart. noeviction: BullMQ must never
+    # have keys evicted under memory pressure.
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      retries: 20
+
+  # Self-hosted S3 (profile "storage"). Skip it when using R2 or S3.
+  storage:
+    image: rustfs/rustfs:latest
+    profiles: [storage]
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY}
+      RUSTFS_VOLUMES: /data
+    volumes:
+      - storage-data:/data
+
+  # Migrations and bucket setup. Runs once per deploy, then exits.
+  setup:
+    image: vidflow-api:${VIDFLOW_TAG:-latest}
+    build: {<<: *build, target: api}
+    command: ['node', 'dist/setup.js']
+    environment:
+      <<: *env
+      WEB_URL: ${WEB_URL}
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    image: vidflow-api:${VIDFLOW_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *env
+      API_PORT: 4000
+      API_URL: ${API_URL}
+      WEB_URL: ${WEB_URL}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10737418240}
+      UPLOADS_PER_HOUR: ${UPLOADS_PER_HOUR:-30}
+      MAX_ACTIVE_VIDEOS: ${MAX_ACTIVE_VIDEOS:-5}
+    depends_on:
+      setup: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+
+  web:
+    image: vidflow-web:${VIDFLOW_TAG:-latest}
+    build: {<<: *build, target: web}
+    restart: unless-stopped
+    depends_on: [api]
+
+  probe-worker:
+    <<: *worker
+    image: vidflow-probe-worker:${VIDFLOW_TAG:-latest}
+    build: {<<: *build, target: probe-worker}
+    environment: {<<: *env, PROBE_CONCURRENCY: 4}
+
+  # The one to scale. Each replica encodes one rendition at a time on all cores.
+  transcode-worker:
+    <<: *worker
+    image: vidflow-transcode-worker:${VIDFLOW_TAG:-latest}
+    build: {<<: *build, target: transcode-worker}
+    environment:
+      <<: *env
+      TRANSCODE_CONCURRENCY: 1
+      FFMPEG_PRESET: ${FFMPEG_PRESET:-veryfast}
+    deploy:
+      replicas: ${TRANSCODE_REPLICAS:-2}
+      resources:
+        limits: {cpus: '${TRANSCODE_CPUS:-2}', memory: 2g}
+    tmpfs:
+      - /tmp/vidflow:size=4g,uid=1000
+
+  package-worker:
+    <<: *worker
+    image: vidflow-package-worker:${VIDFLOW_TAG:-latest}
+    build: {<<: *build, target: package-worker}
+    environment: {<<: *env, PACKAGE_CONCURRENCY: 4}
+
+  thumbnail-worker:
+    <<: *worker
+    image: vidflow-thumbnail-worker:${VIDFLOW_TAG:-latest}
+    build: {<<: *build, target: thumbnail-worker}
+    environment: {<<: *env, THUMBNAIL_CONCURRENCY: 2}
+
+  notify-worker:
+    <<: *worker
+    image: vidflow-notify-worker:${VIDFLOW_TAG:-latest}
+    build: {<<: *build, target: notify-worker}
+    environment: {<<: *env, NOTIFY_CONCURRENCY: 10}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      WEB_ADDRESS: ${WEB_ADDRESS:?set WEB_ADDRESS}
+      API_ADDRESS: ${API_ADDRESS:?set API_ADDRESS}
+      MEDIA_ADDRESS: ${MEDIA_ADDRESS:-http://media.localhost}
+      S3_BUCKET: ${S3_BUCKET:-vidflow}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
+      CADDY_GLOBAL_OPTIONS: ${CADDY_GLOBAL_OPTIONS:-}
+    ports:
+      - '${HTTP_PORT:-80}:80'
+      - '${HTTPS_PORT:-443}:443'
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [web, api]
+
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:
+  caddy-data:
