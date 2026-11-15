@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @vidflow/db db:migrate",
-    "setup": "docker compose up -d && pnpm db:migrate",
+    "setup": "docker compose up -d && pnpm db:migrate && pnpm storage:setup",
+    "storage:setup": "pnpm --filter @vidflow/storage storage:setup",
     "smoke": "./scripts/smoke-api.sh",
     "db:generate": "pnpm --filter @vidflow/db db:generate"
   },

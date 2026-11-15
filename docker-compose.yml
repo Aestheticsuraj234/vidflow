@@ -24,5 +24,18 @@ services:
       interval: 5s
       retries: 10
 
+  # S3-compatible object storage. Production uses Cloudflare R2 or AWS S3.
+  storage:
+    image: rustfs/rustfs:latest
+    environment:
+      RUSTFS_ACCESS_KEY: vidflow
+      RUSTFS_SECRET_KEY: vidflow-secret-key
+      RUSTFS_VOLUMES: /data
+    ports:
+      - '9000:9000'
+    volumes:
+      - storage-data:/data
+
 volumes:
   postgres-data:
+  storage-data:

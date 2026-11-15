@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalEnv": ["NODE_ENV"],
+  "globalPassThroughEnv": ["DATABASE_URL", "REDIS_URL", "BETTER_AUTH_SECRET", "WEB_URL", "S3_*"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -13,10 +14,13 @@
     "lint": {},
     "typecheck": {},
     "test": {
-      "dependsOn": ["@vidflow/db#db:migrate"],
+      "dependsOn": ["@vidflow/db#db:migrate", "@vidflow/storage#storage:setup"],
       "cache": false
     },
     "db:migrate": {
+      "cache": false
+    },
+    "storage:setup": {
       "cache": false
     }
   }

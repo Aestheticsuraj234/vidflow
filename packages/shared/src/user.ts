@@ -10,5 +10,5 @@ export interface PublicUser {
 export interface HealthResponse {
   status: 'ok' | 'degraded';
   version: string;
-  checks: {database: 'ok' | 'down'};
+  checks: {database: 'ok' | 'down'; storage: 'ok' | 'down'};
 }

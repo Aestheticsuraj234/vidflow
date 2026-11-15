@@ -12,19 +12,22 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@vidflow/shared": "workspace:*",
+    "@aws-sdk/client-s3": "^3.1169.0",
+    "@aws-sdk/s3-request-presigner": "^3.1169.0",
     "@hono/node-server": "^2.1.8",
+    "@vidflow/db": "workspace:*",
+    "@vidflow/shared": "workspace:*",
+    "@vidflow/storage": "workspace:*",
     "better-auth": "^1.7.25",
+    "drizzle-orm": "^0.45.4",
     "hono": "^4.13.18",
     "pg": "^8.23.1",
-    "zod": "^4.6.7",
-    "@vidflow/db": "workspace:*",
-    "drizzle-orm": "^0.45.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@vidflow/tsconfig": "workspace:*",
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
+    "@vidflow/tsconfig": "workspace:*",
     "tsup": "^8.5.0",
     "tsx": "^4.23.15",
     "vitest": "^5.1.0"
